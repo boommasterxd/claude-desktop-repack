@@ -30,10 +30,10 @@ Grab the file for your distro and architecture from [Releases](../../releases):
 
 ```bash
 # Fedora / RHEL / openSUSE
-sudo dnf install ./claude-desktop-*.x86_64.rpm
+sudo dnf install ./claude-desktop-repack-*.x86_64.rpm
 
 # Portable (any distro)
-chmod +x Claude_Desktop-*-x86_64.AppImage && ./Claude_Desktop-*-x86_64.AppImage
+chmod +x claude-desktop-repack-*-x86_64.AppImage && ./claude-desktop-repack-*-x86_64.AppImage
 ```
 
 Optional verification (each release ships `RELEASE-PUBKEY.asc` + `SHA256SUMS.txt.asc`):

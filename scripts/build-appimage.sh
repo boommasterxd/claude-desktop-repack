@@ -54,16 +54,16 @@ if ! command -v appimagetool >/dev/null 2>&1; then
 fi
 
 mkdir -p "$OUTDIR"
-OUT="$OUTDIR/Claude_Desktop-${VERSION}-${APP_ARCH}.AppImage"
+OUT="$OUTDIR/claude-desktop-repack-${VERSION}-${APP_ARCH}.AppImage"
 
 ARGS=()
 if [ -n "${GITHUB_REPOSITORY:-}" ]; then
   OWNER="${GITHUB_REPOSITORY%%/*}"; REPO="${GITHUB_REPOSITORY##*/}"
-  ARGS+=( -u "gh-releases-zsync|${OWNER}|${REPO}|latest|Claude_Desktop-*-${APP_ARCH}.AppImage.zsync" )
+  ARGS+=( -u "gh-releases-zsync|${OWNER}|${REPO}|latest|claude-desktop-repack-*-${APP_ARCH}.AppImage.zsync" )
 else
   echo "build-appimage: GITHUB_REPOSITORY unset - building without update info (.zsync skipped)" >&2
 fi
 
 ARCH="$APP_ARCH" "$TOOL" "${ARGS[@]}" "$APPDIR" "$OUT"
 echo "build-appimage: wrote $OUT"
-ls -1 "$OUTDIR"/Claude_Desktop-"${VERSION}"-"${APP_ARCH}".AppImage* 2>/dev/null || true
+ls -1 "$OUTDIR"/claude-desktop-repack-"${VERSION}"-"${APP_ARCH}".AppImage* 2>/dev/null || true

@@ -31,7 +31,7 @@ rpmbuild -bb \
   --define "_topdir $RB" \
   --define "_claude_version $VERSION" \
   --define "_claude_payload $WORK/payload" \
-  "$ROOT/packaging/rpm/claude-desktop.spec"
+  "$ROOT/packaging/rpm/claude-desktop-repack.spec"
 
 # 3. Collect the artifact.
 mkdir -p "$OUTDIR"

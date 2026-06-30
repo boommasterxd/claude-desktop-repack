@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build a relocatable generic tarball from the official .deb for the given arch.
-# Output naming matches the convention: claude-desktop-<v>-linux[-aarch64].tar.gz
+# Output: claude-desktop-repack-<v>-linux[-aarch64].tar.gz
 #
 # Usage: build-tarball.sh <amd64|arm64> [out-dir]
 set -euo pipefail
@@ -19,7 +19,7 @@ WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
 "$HERE/fetch-deb.sh" "$DEB_ARCH" "$WORK"
 VERSION="$(cat "$WORK/version")"
 
-NAME="claude-desktop-${VERSION}-linux${SUFFIX}"
+NAME="claude-desktop-repack-${VERSION}-linux${SUFFIX}"
 DIR="$WORK/$NAME"
 mkdir -p "$DIR"
 cp -a "$WORK/payload/usr" "$DIR/usr"

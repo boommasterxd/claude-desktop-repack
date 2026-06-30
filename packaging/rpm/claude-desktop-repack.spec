@@ -8,7 +8,7 @@
 %global __provides_exclude_from ^/usr/lib/claude-desktop/.*$
 %global __requires_exclude_from ^/usr/lib/claude-desktop/.*$
 
-Name:           claude-desktop
+Name:           claude-desktop-repack
 Version:        %{_claude_version}
 Release:        1%{?dist}
 Summary:        Desktop application for Claude.ai
@@ -39,7 +39,11 @@ Recommends:     libappindicator-gtk3
 Recommends:     (gnome-keyring or kwalletd5 or kwalletd6)
 Recommends:     qemu-system-x86
 
-# This package and the patched claude-desktop-bin install to the same paths.
+# dnf installs/shows this as "claude-desktop-repack", but it ships the same app
+# identity and file paths as a plain "claude-desktop": provide that name and
+# conflict with any other package owning the same files.
+Provides:       claude-desktop = %{version}-%{release}
+Conflicts:      claude-desktop
 Conflicts:      claude-desktop-bin
 
 %description

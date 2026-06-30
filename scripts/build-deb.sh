@@ -34,7 +34,14 @@ cp -a "$WORK/payload/usr" "$ROOT/usr"
 ( cd "$WORK" && ar x claude.deb control.tar.xz )
 tar xf "$WORK/control.tar.xz" -C "$ROOT/DEBIAN"
 
+# Rename the package to claude-desktop-repack (apt/dpkg shows it as ours) while
+# keeping the same app identity and files: provide/conflict/replace the plain
+# "claude-desktop" name so the two never coexist or shadow each other.
+CTRL="$ROOT/DEBIAN/control"
+sed -i 's/^Package: claude-desktop$/Package: claude-desktop-repack/' "$CTRL"
+grep -q '^Provides:' "$CTRL" || sed -i '/^Package: /a Provides: claude-desktop\nConflicts: claude-desktop\nReplaces: claude-desktop' "$CTRL"
+
 mkdir -p "$OUTDIR"
-OUT="$OUTDIR/claude-desktop_${VERSION}_${DEB_ARCH}.deb"
+OUT="$OUTDIR/claude-desktop-repack_${VERSION}_${DEB_ARCH}.deb"
 dpkg-deb --root-owner-group --build "$ROOT" "$OUT"
 echo "build-deb: wrote $OUT"
