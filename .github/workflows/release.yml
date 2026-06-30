@@ -28,7 +28,7 @@ jobs:
       version: ${{ steps.d.outputs.version }}
       should_release: ${{ steps.d.outputs.should_release }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - id: d
         env:
           FORCE: ${{ inputs.force }}
@@ -64,7 +64,7 @@ jobs:
       ARCH: ${{ matrix.arch }}
       APPIMAGE_EXTRACT_AND_RUN: '1'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install build tooling
         run: sudo apt-get update && sudo apt-get install -y rpm binutils xz-utils curl zsync
       - name: Build RPM / tarball / AppImage / deb
@@ -73,7 +73,7 @@ jobs:
           bash scripts/build-tarball.sh  "$ARCH" dist
           bash scripts/build-appimage.sh "$ARCH" dist
           bash scripts/build-deb.sh      "$ARCH" dist
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: dist-${{ matrix.arch }}
           path: dist/*
@@ -82,8 +82,8 @@ jobs:
     needs: [detect, build]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           path: artifacts
       - name: Install signing tooling
