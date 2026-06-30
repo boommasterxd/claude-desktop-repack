@@ -15,6 +15,7 @@ on:
 
 permissions:
   contents: write   # create releases (no commits back to the repo)
+  issues: write     # open/update an issue when the workflow fails
 
 concurrency:
   group: release
@@ -109,3 +110,57 @@ jobs:
           gh release create "v$V" dist/* --title "Claude Desktop $V" --notes-file NOTES.md \
             || { gh release edit "v$V" --title "Claude Desktop $V" --notes-file NOTES.md; \
                  gh release upload "v$V" dist/* --clobber; }
+
+  notify-failure:
+    needs: [detect, build, release]
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Open or update an issue with the failure log
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -uo pipefail
+          # Collect the logs of the jobs that failed (each completed job's log is
+          # available via the API even while this notify job is still running).
+          : > failed.log
+          gh api "repos/$REPO/actions/runs/$RUN_ID/jobs" \
+            -q '.jobs[] | select(.conclusion=="failure") | "\(.id) \(.name)"' \
+          | while read -r jid jname; do
+              [ -z "$jid" ] && continue
+              echo "===== $jname =====" >> failed.log
+              gh api "repos/$REPO/actions/jobs/$jid/logs" >> failed.log 2>/dev/null \
+                || echo "(log unavailable; see the run)" >> failed.log
+              echo >> failed.log
+            done
+          tail -n 200 failed.log | sed 's/\r$//' > excerpt.log
+          {
+            echo "The **Repackage and release** workflow failed."
+            echo
+            echo "- Run: $RUN_URL"
+            echo "- Commit: \`$SHA\`"
+            echo
+            echo "<details><summary>Failed job log (last 200 lines)</summary>"
+            echo
+            echo '```'
+            cat excerpt.log
+            echo '```'
+            echo
+            echo "</details>"
+          } > body.md
+          gh label create ci-failure -R "$REPO" --color B60205 \
+            --description "Automated release workflow failure" 2>/dev/null || true
+          # Reuse an open ci-failure issue if one exists (avoids one new issue per
+          # 3-hourly run while upstream stays broken); otherwise open a new one.
+          existing=$(gh issue list -R "$REPO" --state open --label ci-failure \
+            --json number -q '.[0].number' 2>/dev/null || true)
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" -R "$REPO" --body-file body.md
+          else
+            gh issue create -R "$REPO" --title "CI failure: release workflow" \
+              --label ci-failure --body-file body.md
+          fi
