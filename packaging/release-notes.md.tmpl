@@ -1,0 +1,18 @@
+Repackaged, unmodified, from Anthropic's official Claude Desktop Linux build
+**version `__VERSION__`** into RPM, AppImage, tarball and `.deb` for x86_64 and
+aarch64. The app itself is not patched.
+
+**What changed in the app:** the build number `__VERSION__` is internal and has
+no separate entry, so see Anthropic's official release notes for the actual
+changes in the app: https://support.claude.com/en/articles/12138966-release-notes
+
+**Verify** (each RPM carries an embedded GPG signature; `SHA256SUMS.txt` is
+signed with the same key, published as `RELEASE-PUBKEY.asc`):
+
+```
+gpg --import RELEASE-PUBKEY.asc
+gpg --verify SHA256SUMS.txt.asc SHA256SUMS.txt && sha256sum -c SHA256SUMS.txt
+```
+
+Installation and the GNOME Wayland Quick Entry hotkey are documented in the
+[README](https://github.com/__REPO__#readme).

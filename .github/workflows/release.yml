@@ -14,7 +14,7 @@ on:
         default: false
 
 permissions:
-  contents: write   # create releases and commit .upstream-version
+  contents: write   # create releases (no commits back to the repo)
 
 concurrency:
   group: release
@@ -31,6 +31,7 @@ jobs:
       - id: d
         env:
           FORCE: ${{ inputs.force }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           eval "$(bash scripts/detect-version.sh amd64)"
           # Defense in depth: version is used in shell/tag context later.
@@ -38,13 +39,16 @@ jobs:
             echo "Refusing unexpected version string: $VERSION" >&2
             exit 1
           fi
-          last="$(cat .upstream-version 2>/dev/null || echo 0.0.0)"
-          echo "Latest upstream: $VERSION  |  last released: $last"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          if [ "$VERSION" != "$last" ] || [ "$FORCE" = "true" ]; then
-            echo "should_release=true" >> "$GITHUB_OUTPUT"
-          else
+          # State is the existence of the release itself, not a committed file:
+          # that keeps the workflow read-only on the repo (no push to a
+          # protected branch) and impossible to desync from what is published.
+          if [ "$FORCE" != "true" ] && gh release view "v$VERSION" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release v$VERSION already exists, nothing to do."
             echo "should_release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Will build and release v$VERSION."
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
           fi
 
   build:
@@ -100,17 +104,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           V: ${{ needs.detect.outputs.version }}
         run: |
-          gh release create "v$V" dist/* \
-            --title "Claude Desktop $V" \
-            --notes "Repackaged from Anthropic's official Linux .deb (version $V). Unmodified, unsigned re-packaging." \
-            || gh release upload "v$V" dist/* --clobber
-      - name: Record released version
-        env:
-          V: ${{ needs.detect.outputs.version }}
-        run: |
-          echo "$V" > .upstream-version
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .upstream-version
-          git commit -m "chore: release $V" || echo "nothing to commit"
-          git push
+          sed -e "s/__VERSION__/$V/g" -e "s#__REPO__#$GITHUB_REPOSITORY#g" \
+            packaging/release-notes.md.tmpl > NOTES.md
+          gh release create "v$V" dist/* --title "claude-desktop-repack $V" --notes-file NOTES.md \
+            || { gh release edit "v$V" --title "claude-desktop-repack $V" --notes-file NOTES.md; \
+                 gh release upload "v$V" dist/* --clobber; }

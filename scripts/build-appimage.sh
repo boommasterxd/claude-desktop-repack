@@ -66,4 +66,13 @@ fi
 
 ARCH="$APP_ARCH" "$TOOL" "${ARGS[@]}" "$APPDIR" "$OUT"
 echo "build-appimage: wrote $OUT"
+
+# appimagetool's built-in zsync generation can silently no-op under
+# APPIMAGE_EXTRACT_AND_RUN, so produce the delta-update file explicitly if it is
+# missing. The URL header points at the matching asset on the latest release.
+if [ -n "${GITHUB_REPOSITORY:-}" ] && [ ! -f "$OUT.zsync" ] && command -v zsyncmake >/dev/null 2>&1; then
+  zsyncmake -u "https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/$(basename "$OUT")" \
+            -o "$OUT.zsync" "$OUT" && echo "build-appimage: wrote $OUT.zsync"
+fi
+
 ls -1 "$OUTDIR"/claude-desktop-repack-"${VERSION}"-"${APP_ARCH}".AppImage* 2>/dev/null || true
