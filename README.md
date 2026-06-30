@@ -54,14 +54,13 @@ You can still open Quick Entry from the tray icon. To get a real hotkey, trigger
 that same tray menu item over D-Bus and bind it to a **native** GNOME shortcut,
 which bypasses the broken portal:
 
-1. Install the helper script:
-
-   ```bash
-   install -Dm755 extras/claude-quick-entry ~/.local/bin/claude-quick-entry
-   ```
+1. Get the helper. The RPM, `.deb` and tarball already install it as
+   `claude-quick-entry` (in your `PATH`). For the AppImage, download the
+   standalone `claude-quick-entry` from the same release and drop it on your
+   `PATH`, e.g. `install -Dm755 claude-quick-entry ~/.local/bin/claude-quick-entry`.
 
 2. Bind it to a key, either via **Settings -> Keyboard -> Custom Shortcuts**
-   (command `~/.local/bin/claude-quick-entry`), or from a terminal:
+   (command `claude-quick-entry`), or from a terminal:
 
    ```bash
    BASE=/org/gnome/settings-daemon/plugins/media-keys
@@ -73,7 +72,7 @@ which bypasses the broken portal:
      *) dconf write $BASE/custom-keybindings "${cur%]}, '$KB']" ;;
    esac
    dconf write "${KB}name"    "'Claude Quick Entry'"
-   dconf write "${KB}command" "'$HOME/.local/bin/claude-quick-entry'"
+   dconf write "${KB}command" "'claude-quick-entry'"
    dconf write "${KB}binding" "'<Control><Alt>space'"
    ```
 

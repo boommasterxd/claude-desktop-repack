@@ -39,5 +39,10 @@ test -x "$OUT/payload/usr/lib/claude-desktop/claude-desktop" \
 test -u "$OUT/payload/usr/lib/claude-desktop/chrome-sandbox" \
   || echo "fetch-deb: WARNING chrome-sandbox is not setuid in the payload" >&2
 
+# Bundle our Quick Entry hotkey helper into the payload so every package ships it
+# in PATH at /usr/bin/claude-quick-entry. The app itself stays unmodified; this is
+# just an extra standalone CLI helper (see extras/claude-quick-entry and README).
+install -Dm755 "$HERE/../extras/claude-quick-entry" "$OUT/payload/usr/bin/claude-quick-entry"
+
 printf '%s\n' "$VERSION" > "$OUT/version"
 echo "fetch-deb: payload ready in $OUT/payload (version $VERSION)"

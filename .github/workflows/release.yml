@@ -87,6 +87,8 @@ jobs:
         run: |
           mkdir -p dist
           find artifacts -type f \( -name '*.rpm' -o -name '*.deb' -o -name '*.tar.gz' -o -name '*.AppImage' -o -name '*.zsync' \) -exec cp -v {} dist/ \;
+          # Ship the Quick Entry hotkey helper standalone too (handy for AppImage users).
+          install -m755 extras/claude-quick-entry dist/claude-quick-entry
           ls -lh dist
       - name: Sign artifacts (RPM + SHA256SUMS)
         env:
