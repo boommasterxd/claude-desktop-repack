@@ -1,0 +1,21 @@
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "08:00"
+      timezone: "Europe/Berlin"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "github-actions"
+    groups:
+      # Only minor+patch are grouped (and auto-merged). Major updates are
+      # intentionally NOT listed here, so Dependabot opens one individual PR per
+      # major update for manual review (selective merge / clearer changelog / rollback).
+      minor-patch:
+        update-types:
+          - "minor"
+          - "patch"

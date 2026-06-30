@@ -1,0 +1,47 @@
+name: Update gitleaks
+
+on:
+  schedule:
+    - cron: "0 6 1 * *" # 1st of each month, 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Bump .gitleaks-version on a new release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          current=$(jq -r '.version' .gitleaks-version)
+          latest=$(gh api /repos/gitleaks/gitleaks/releases/latest --jq '.tag_name' | sed 's/^v//')
+          echo "current=$current latest=$latest"
+          if [ "$current" = "$latest" ]; then
+            echo "Already up to date."
+            exit 0
+          fi
+          sum=$(curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${latest}/gitleaks_${latest}_checksums.txt" \
+            | grep "gitleaks_${latest}_linux_x64.tar.gz" | awk '{print $1}')
+          if [ -z "$sum" ]; then
+            echo "Could not find linux_x64 checksum for v${latest}" >&2
+            exit 1
+          fi
+          jq --arg v "$latest" --arg s "$sum" '.version=$v | .sha256=$s' .gitleaks-version > .gitleaks-version.tmp
+          mv .gitleaks-version.tmp .gitleaks-version
+          branch="chore/update-gitleaks-${latest}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add .gitleaks-version
+          git commit -m "chore(deps): bump gitleaks to ${latest}"
+          git push --force-with-lease origin "$branch"
+          gh pr create \
+            --title "chore(deps): bump gitleaks to ${latest}" \
+            --body "Automated update of the pinned gitleaks CLI to v${latest}." \
+            --label dependencies --base main --head "$branch"

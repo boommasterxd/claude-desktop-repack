@@ -1,0 +1,22 @@
+name: Secret scan
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  gitleaks:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Run gitleaks
+        run: |
+          ver=$(jq -r '.version' .gitleaks-version)
+          sum=$(jq -r '.sha256' .gitleaks-version)
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${ver}/gitleaks_${ver}_linux_x64.tar.gz" -o gitleaks.tar.gz
+          echo "${sum}  gitleaks.tar.gz" | sha256sum -c -
+          tar -xzf gitleaks.tar.gz gitleaks
+          ./gitleaks dir --no-banner --redact --exit-code 1 --verbose .
