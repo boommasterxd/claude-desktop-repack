@@ -106,6 +106,6 @@ jobs:
         run: |
           sed -e "s/__VERSION__/$V/g" -e "s#__REPO__#$GITHUB_REPOSITORY#g" \
             packaging/release-notes.md.tmpl > NOTES.md
-          gh release create "v$V" dist/* --title "claude-desktop-repack $V" --notes-file NOTES.md \
-            || { gh release edit "v$V" --title "claude-desktop-repack $V" --notes-file NOTES.md; \
+          gh release create "v$V" dist/* --title "Claude Desktop $V" --notes-file NOTES.md \
+            || { gh release edit "v$V" --title "Claude Desktop $V" --notes-file NOTES.md; \
                  gh release upload "v$V" dist/* --clobber; }
