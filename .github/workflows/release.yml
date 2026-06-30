@@ -1,0 +1,113 @@
+name: Repackage and release
+
+# Watches Anthropic's official apt repo and, when a new Claude Desktop version
+# appears, repackages the official .deb into RPM / tarball / AppImage and
+# publishes a GitHub Release. No patching, no re-signing: pure re-packaging.
+on:
+  schedule:
+    - cron: '17 */3 * * *'   # every 3 hours
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Build even if the version is unchanged'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write   # create releases and commit .upstream-version
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.d.outputs.version }}
+      should_release: ${{ steps.d.outputs.should_release }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: d
+        env:
+          FORCE: ${{ inputs.force }}
+        run: |
+          eval "$(bash scripts/detect-version.sh amd64)"
+          # Defense in depth: version is used in shell/tag context later.
+          if ! printf '%s' "$VERSION" | grep -qE '^[0-9]+(\.[0-9]+)*$'; then
+            echo "Refusing unexpected version string: $VERSION" >&2
+            exit 1
+          fi
+          last="$(cat .upstream-version 2>/dev/null || echo 0.0.0)"
+          echo "Latest upstream: $VERSION  |  last released: $last"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if [ "$VERSION" != "$last" ] || [ "$FORCE" = "true" ]; then
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    needs: detect
+    if: needs.detect.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
+    env:
+      ARCH: ${{ matrix.arch }}
+      APPIMAGE_EXTRACT_AND_RUN: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build tooling
+        run: sudo apt-get update && sudo apt-get install -y rpm binutils xz-utils curl zsync
+      - name: Build RPM / tarball / AppImage
+        run: |
+          bash scripts/build-rpm.sh      "$ARCH" dist
+          bash scripts/build-tarball.sh  "$ARCH" dist
+          bash scripts/build-appimage.sh "$ARCH" dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.arch }}
+          path: dist/*
+
+  release:
+    needs: [detect, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Install signing tooling
+        run: sudo apt-get update && sudo apt-get install -y rpm gnupg
+      - name: Collect assets
+        run: |
+          mkdir -p dist
+          find artifacts -type f \( -name '*.rpm' -o -name '*.tar.gz' -o -name '*.AppImage' -o -name '*.zsync' \) -exec cp -v {} dist/ \;
+          ls -lh dist
+      - name: Sign artifacts (RPM + SHA256SUMS)
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: bash scripts/sign-artifacts.sh dist
+      - name: Create / update GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          V: ${{ needs.detect.outputs.version }}
+        run: |
+          gh release create "v$V" dist/* \
+            --title "Claude Desktop $V" \
+            --notes "Repackaged from Anthropic's official Linux .deb (version $V). Unmodified, unsigned re-packaging." \
+            || gh release upload "v$V" dist/* --clobber
+      - name: Record released version
+        env:
+          V: ${{ needs.detect.outputs.version }}
+        run: |
+          echo "$V" > .upstream-version
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .upstream-version
+          git commit -m "chore: release $V" || echo "nothing to commit"
+          git push

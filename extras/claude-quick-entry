@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# Open Claude Desktop's Quick Entry window by triggering its tray-menu item over
+# D-Bus (com.canonical.dbusmenu). This works around the broken global hotkey on
+# GNOME Wayland: the official build registers its hotkey through Chromium's
+# GlobalShortcuts portal path, which fails because Chromium never performs the
+# org.freedesktop.host.portal.Registry.Register handshake that xdg-desktop-portal
+# 1.20+ requires (see electron/electron#51875). The tray menu, however, is a
+# normal StatusNotifierItem/dbusmenu and can be driven from outside.
+#
+# Bind this script to a GNOME custom keyboard shortcut (see README) to get a
+# working "Quick Entry" hotkey without the portal.
+set -uo pipefail
+
+watcher_items() {
+  busctl --user get-property org.kde.StatusNotifierWatcher /StatusNotifierWatcher \
+    org.kde.StatusNotifierWatcher RegisteredStatusNotifierItems 2>/dev/null
+}
+
+# Find Claude's StatusNotifierItem -> "bus|objectpath" (the bus name changes on
+# every app start, so it must be resolved dynamically).
+find_sni() {
+  local tok bus path owner comm
+  for tok in $(watcher_items | grep -oE '"[^"]+"' | tr -d '"'); do
+    bus="${tok%@*}"; path="/StatusNotifierItem"
+    case "$tok" in *@*) path="${tok#*@}";; esac
+    owner=$(busctl --user list 2>/dev/null | awk -v n="$bus" '$1==n{print $2; exit}')
+    comm=$(ps -o comm= -p "${owner:-0}" 2>/dev/null)
+    case "$comm" in *claude*) printf '%s|%s\n' "$bus" "$path"; return 0;; esac
+  done
+  return 1
+}
+
+sni=$(find_sni) || { echo "claude-quick-entry: Claude tray item not found (is Claude running?)" >&2; exit 1; }
+bus="${sni%|*}"; spath="${sni#*|}"
+
+menu=$(busctl --user get-property "$bus" "$spath" org.kde.StatusNotifierItem Menu 2>/dev/null \
+        | grep -oE '/[A-Za-z0-9/_]+' | head -1)
+menu="${menu:-/com/canonical/dbusmenu}"
+
+# Resolve the "Quick Entry" item id by label (locale-independent term); fall back to 2.
+layout=$(gdbus call --session --dest "$bus" --object-path "$menu" \
+          --method com.canonical.dbusmenu.GetLayout 0 20 "['label']" 2>/dev/null)
+id=$(printf '%s' "$layout" | grep -oE "[0-9]+, \{'label': <'[^']*[Qq]uick ?[Ee]ntry" | grep -oE '^[0-9]+' | head -1)
+id="${id:-2}"
+
+gdbus call --session --dest "$bus" --object-path "$menu" \
+  --method com.canonical.dbusmenu.Event "$id" "clicked" "<''>" 0 >/dev/null 2>&1
