@@ -43,6 +43,10 @@ gpg --import RELEASE-PUBKEY.asc
 gpg --verify SHA256SUMS.txt.asc SHA256SUMS.txt && sha256sum -c SHA256SUMS.txt
 ```
 
+The RPM, `.deb` and tarball additionally ship a small `claude-quick-entry`
+helper (in `PATH`) that restores the global Quick Entry hotkey on GNOME Wayland,
+see below.
+
 ## Quick Entry global hotkey on GNOME Wayland
 
 The official build's global Quick Entry hotkey does not work on GNOME Wayland: it
