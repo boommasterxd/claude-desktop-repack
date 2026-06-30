@@ -2,3 +2,7 @@
 *.deb
 *.rpm
 /tmp/
+
+# never commit private keys
+*.SECRET.asc
+*private*.asc

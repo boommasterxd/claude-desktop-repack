@@ -61,10 +61,18 @@ scripts/build-tarball.sh  amd64 dist
 scripts/build-appimage.sh amd64 dist
 ```
 
+`deb` is not in the default set (it needs `dpkg-deb`, which is absent on most
+RPM distros); request it explicitly once `dpkg` is installed:
+
+```bash
+scripts/build-local.sh amd64 deb       # needs dpkg-deb (Fedora: dnf install dpkg)
+```
+
 Tooling: `rpmbuild` (`rpm-build`), `ar` (`binutils`), `tar`, `xz`, `curl`;
-`appimagetool` is downloaded on demand. Export `GPG_PRIVATE_KEY` to also sign
-the local build. Cross-arch builds only package files (no compilation), so an
-aarch64 build runs fine on an x86_64 host but cannot be smoke-tested there.
+`appimagetool` is downloaded on demand; `dpkg-deb` (`dpkg`) only for the `.deb`.
+Export `GPG_PRIVATE_KEY` to also sign the local build. Cross-arch builds only
+package files (no compilation), so an aarch64 build runs fine on an x86_64 host
+but cannot be smoke-tested there.
 
 ## Quick Entry global hotkey on GNOME Wayland
 
@@ -120,11 +128,14 @@ across restarts. It requires the app's tray icon to be present (on GNOME, the
 - [x] RPM (x86_64, aarch64)
 - [x] Generic tarball (x86_64, aarch64)
 - [x] AppImage + .zsync (x86_64, aarch64; not sandboxed, so Claude Code / Cowork keep host access)
+- [x] .deb (amd64, arm64; rebuilt from the official payload with upstream's control + maintainer scripts)
 - [ ] Arch (AUR)
 
-**Debian / Ubuntu** are intentionally not targeted: Anthropic already ships an
-official `.deb` and apt repository, so a re-wrapped `.deb` would only be a
-redundant mirror. Use the [official instructions](https://code.claude.com/docs/en/desktop-linux).
+The `.deb` is included for convenience and parity, but on **Debian / Ubuntu**
+you should prefer Anthropic's
+[official apt repository](https://code.claude.com/docs/en/desktop-linux): only
+that path delivers automatic updates through `apt upgrade`. The `.deb` here is a
+functionally-equivalent rebuild of the official payload, not a separate build.
 
 **Flatpak** is intentionally not a target: the sandbox cuts Claude Code and
 Cowork off from the host toolchain (no `git` / `node` / compilers in PATH, no

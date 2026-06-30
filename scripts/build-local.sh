@@ -34,7 +34,8 @@ for fmt in "${FORMATS[@]}"; do
     rpm)      bash "$HERE/build-rpm.sh"      "$ARCH" "$OUT" ;;
     tarball)  bash "$HERE/build-tarball.sh"  "$ARCH" "$OUT" ;;
     appimage) bash "$HERE/build-appimage.sh" "$ARCH" "$OUT" ;;
-    *) echo "build-local: unknown format '$fmt' (use rpm|tarball|appimage)" >&2; exit 1 ;;
+    deb)      bash "$HERE/build-deb.sh"      "$ARCH" "$OUT" ;;
+    *) echo "build-local: unknown format '$fmt' (use rpm|tarball|appimage|deb)" >&2; exit 1 ;;
   esac
 done
 
