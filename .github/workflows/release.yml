@@ -202,6 +202,36 @@ jobs:
             exit 0
           fi
 
+          # check-native-paths prints "NATIVE-PATH-DRIFT version=<v> paths=<list>"
+          # when upstream introduces new, unreviewed absolute system paths that may
+          # be Debian-specific (cross-distro breakage). One issue per version.
+          driftline=$(grep -aoE 'NATIVE-PATH-DRIFT version=[0-9.]+ paths=[A-Za-z0-9,._/*+-]+' failed.log | head -1 || true)
+          if [ -n "$driftline" ]; then
+            dv=${driftline#*version=}; dv=${dv%% *}
+            dp=${driftline#*paths=}; dp=${dp%% *}
+            title="Unreviewed system paths: Claude Desktop $dv"
+            {
+              echo "New absolute system path(s) appeared in **Claude Desktop $dv** that are not in the reviewed allowlist (\`baseline/system-paths.json\`). Some may be Debian-specific and break non-Debian distros (Fedora/RHEL/Arch), like the OVMF firmware paths \`cowork-firmware-paths\` fixes."
+              echo
+              echo "- New path(s): \`$dp\`"
+              echo "- Run: $RUN_URL"
+              echo
+              echo "Review each, then either allowlist the benign ones (\`node scripts/check-native-paths.mjs <payloadDir> --update\`, then review the diff) or write a patch for the Debian-specific ones (see \`patches/cowork-firmware-paths.mjs\`)."
+              echo
+              logblock
+            } > body.md
+            gh label create path-drift -R "$REPO" --color FBCA04 \
+              --description "New unreviewed absolute system path in the upstream bundle" 2>/dev/null || true
+            existing=$(gh issue list -R "$REPO" --state open --label path-drift \
+              --json number,title -q "[.[]|select(.title==\"$title\")][0].number" 2>/dev/null || true)
+            if [ -n "$existing" ]; then
+              gh issue comment "$existing" -R "$REPO" --body-file body.md
+            else
+              gh issue create -R "$REPO" --title "$title" --label path-drift --body-file body.md
+            fi
+            exit 0
+          fi
+
           # Generic workflow failure (not a patch mismatch): one reused issue.
           {
             echo "The **Repackage and release** workflow failed."

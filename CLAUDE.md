@@ -86,7 +86,8 @@ It then drops the `claude-desktop-hotkey` helper next to the **untouched** upstr
 patches/*.mjs         the patches; patches/index.mjs auto-discovers them
 scripts/
   detect-version.sh   highest upstream version from the apt index
-  fetch-deb.sh        download + SHA256-verify + extract + call patch-payload
+  fetch-deb.sh        download + SHA256-verify + extract + guard + call patch-payload
+  check-native-paths.mjs  fail if a new, unreviewed absolute system path appears
   patch-payload.mjs   unpack asar -> apply patches -> node --check -> repack
   build-rpm.sh        \
   build-deb.sh         }  one format each; all honour $PKGREL and $ARCH
@@ -134,6 +135,12 @@ Every upstream release can rename every minified identifier. Follow these rules:
 - `patch-payload.mjs` prints `PATCH-FAILURE version=<v> failed=<list>` and exits 1
   on any failure, which makes `notify-failure` open the per-version issue. A broken
   patch is therefore never shipped.
+- Separately, `check-native-paths.mjs` runs before patching and prints
+  `NATIVE-PATH-DRIFT version=<v> paths=<list>` (exit 1) when the bundle gains a new
+  absolute system path not in `baseline/system-paths.json` - a possibly Debian-only
+  path that could break non-Debian distros. `notify-failure` opens a `path-drift`
+  issue. Allowlist benign paths with `--update`, or write a patch (like
+  `cowork-firmware-paths`) for Debian-specific ones.
 
 ## How to do things
 
