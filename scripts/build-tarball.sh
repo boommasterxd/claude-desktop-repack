@@ -18,8 +18,9 @@ esac
 WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
 "$HERE/fetch-deb.sh" "$DEB_ARCH" "$WORK"
 VERSION="$(cat "$WORK/version")"
+PKGREL="${PKGREL:-0}"
 
-NAME="claude-desktop-repack-${VERSION}-linux${SUFFIX}"
+NAME="claude-desktop-repack-${VERSION}-${PKGREL}-linux${SUFFIX}"
 DIR="$WORK/$NAME"
 mkdir -p "$DIR"
 cp -a "$WORK/payload/usr" "$DIR/usr"

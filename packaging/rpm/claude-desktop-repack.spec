@@ -10,7 +10,7 @@
 
 Name:           claude-desktop-repack
 Version:        %{_claude_version}
-Release:        1%{?dist}
+Release:        %{_pkgrel}%{?dist}
 Summary:        Desktop application for Claude.ai
 License:        Proprietary
 URL:            https://claude.ai

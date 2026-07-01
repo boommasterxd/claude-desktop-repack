@@ -26,6 +26,8 @@ esac
 WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
 "$HERE/fetch-deb.sh" "$DEB_ARCH" "$WORK"
 VERSION="$(cat "$WORK/version")"
+PKGREL="${PKGREL:-0}"
+FULLVER="${VERSION}-${PKGREL}"
 
 APPDIR="$WORK/AppDir"
 mkdir -p "$APPDIR"
@@ -54,7 +56,7 @@ if ! command -v appimagetool >/dev/null 2>&1; then
 fi
 
 mkdir -p "$OUTDIR"
-OUT="$OUTDIR/claude-desktop-repack-${VERSION}-${APP_ARCH}.AppImage"
+OUT="$OUTDIR/claude-desktop-repack-${FULLVER}-${APP_ARCH}.AppImage"
 
 ARGS=()
 if [ -n "${GITHUB_REPOSITORY:-}" ]; then
@@ -75,4 +77,4 @@ if [ -n "${GITHUB_REPOSITORY:-}" ] && [ ! -f "$OUT.zsync" ] && command -v zsyncm
             -o "$OUT.zsync" "$OUT" && echo "build-appimage: wrote $OUT.zsync"
 fi
 
-ls -1 "$OUTDIR"/claude-desktop-repack-"${VERSION}"-"${APP_ARCH}".AppImage* 2>/dev/null || true
+ls -1 "$OUTDIR"/claude-desktop-repack-"${FULLVER}"-"${APP_ARCH}".AppImage* 2>/dev/null || true

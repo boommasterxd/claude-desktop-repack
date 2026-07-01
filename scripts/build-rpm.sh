@@ -22,18 +22,21 @@ trap 'rm -rf "$WORK"' EXIT
 # 1. Fetch + verify + extract the official .deb.
 "$HERE/fetch-deb.sh" "$DEB_ARCH" "$WORK"
 VERSION="$(cat "$WORK/version")"
+PKGREL="${PKGREL:-0}"
 
 # 2. Build the RPM with rpmbuild (cross-arch is fine: we only package files).
+#    Version = upstream, Release = our pkgrel (so a fix rebuild is an upgrade).
 RB="$WORK/rpmbuild"
 mkdir -p "$RB"/{BUILD,RPMS,SOURCES,SPECS,BUILDROOT}
 rpmbuild -bb \
   --target "$RPM_ARCH" \
   --define "_topdir $RB" \
   --define "_claude_version $VERSION" \
+  --define "_pkgrel $PKGREL" \
   --define "_claude_payload $WORK/payload" \
   "$ROOT/packaging/rpm/claude-desktop-repack.spec"
 
 # 3. Collect the artifact.
 mkdir -p "$OUTDIR"
 find "$RB/RPMS" -name '*.rpm' -exec cp -v {} "$OUTDIR/" \;
-echo "build-rpm: done -> $OUTDIR (version $VERSION, $RPM_ARCH)"
+echo "build-rpm: done -> $OUTDIR (version $VERSION-$PKGREL, $RPM_ARCH)"
