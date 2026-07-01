@@ -54,9 +54,10 @@ patch, so a broken patch is never shipped silently.
 
 Two of them (`quick-entry-cli-toggle`, `quick-entry-app-id`) address gaps specific
 to **GNOME on Wayland**; on X11 and other compositors the official build already
-behaves correctly. One (`cowork-firmware-paths`) restores Cowork on non-Debian
-distros. The app itself runs unmodified everywhere; these only fill in the
-Linux/distro gaps the official Debian build leaves.
+behaves correctly. Two more (`cowork-firmware-paths`, `cowork-install-hint`) make
+Cowork work and its dependency hint correct on non-Debian distros. The app itself
+runs unmodified everywhere; these only fill in the Linux/distro gaps the official
+Debian build leaves.
 
 ### Quick Entry hotkey (`quick-entry-cli-toggle`)
 
@@ -129,6 +130,15 @@ sudo pacman -S qemu-full edk2-ovmf virtiofsd
 Notes: on x86_64 Fedora a compatibility symlink at `/usr/share/OVMF/` often makes
 Cowork work even without this patch, but Arch, arm64 and others need it. openSUSE
 (firmware named `*-code.bin`) needs a different VARS-file rule and is a known gap.
+
+### Cowork dependency hint (`cowork-install-hint`)
+
+When those Cowork dependencies are missing, the app shows a copy-paste install
+command. Upstream hard-codes the Debian one (`sudo apt install ...` with Debian
+package names), which is wrong on other distros. This patch wraps it in a tiny
+runtime translator: on Debian/Ubuntu it is returned unchanged, otherwise the first
+of `dnf`/`pacman`/`zypper` found rewrites the manager and package names for that
+distro. Cosmetic and fully guarded - any failure falls back to the original string.
 
 ## Maintaining
 

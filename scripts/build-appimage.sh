@@ -32,6 +32,7 @@ FULLVER="${VERSION}-${PKGREL}"
 APPDIR="$WORK/AppDir"
 mkdir -p "$APPDIR"
 cp -a "$WORK/payload/usr" "$APPDIR/usr"
+rm -rf "$APPDIR/usr/share/lintian"   # Debian packaging-lint metadata, meaningless off Debian
 
 # AppImages are mounted nosuid, so chrome-sandbox cannot be setuid here; run with
 # --no-sandbox (standard for portable Electron apps).

@@ -24,6 +24,7 @@ NAME="claude-desktop-repack-${VERSION}-${PKGREL}-linux${SUFFIX}"
 DIR="$WORK/$NAME"
 mkdir -p "$DIR"
 cp -a "$WORK/payload/usr" "$DIR/usr"
+rm -rf "$DIR/usr/share/lintian"   # Debian packaging-lint metadata, meaningless off Debian
 
 # Relocatable launcher. chrome-sandbox needs root+setuid which a user-extracted
 # tree cannot provide, so default to --no-sandbox (same trade-off every portable
