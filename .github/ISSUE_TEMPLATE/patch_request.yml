@@ -1,0 +1,63 @@
+name: Patch request
+description: Propose a new patch that fixes Linux/distro behavior the official build gets wrong.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Use this to propose a **new patch**: something Anthropic's official Linux
+        build does wrong (or not at all) on a distro / session where it should
+        work, in the same spirit as the existing patches (Quick Entry hotkey,
+        Quick Entry window `WM_CLASS`, Cowork firmware paths / install hint).
+
+
+        This is **not** for unlocking app features Anthropic gates off on Linux
+        (Computer Use, themes, profiles, ...). Those are out of scope here, this
+        repo ships the app as Anthropic ships it plus small Linux fixes. For the
+        unlocked extras see patrickjaja/claude-desktop-bin (linked in the README).
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Quick Entry (hotkey / window)
+        - Cowork (VM / firmware / dependencies)
+        - Window identity (WM_CLASS / app_id)
+        - Screenshot / input tooling
+        - Hardcoded Debian-only path
+        - Other Linux/distro gap
+    validations:
+      required: true
+  - type: input
+    id: affected
+    attributes:
+      label: Where does it break?
+      description: Distro(s), session type, and architecture where the official build misbehaves.
+      placeholder: Fedora 43 KDE, Wayland, aarch64
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What the official build gets wrong
+      description: What happens on Linux/this distro, and what it should do instead.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence / pointers
+      description: >-
+        Anything that helps locate the fix: the relevant snippet of the minified
+        `index.js`, a hardcoded path, terminal `[claude-cu] diagnostics:` output,
+        a related upstream Electron/Chromium issue, etc.
+      render: shell
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Confirmation
+      options:
+        - label: This is a Linux/distro compatibility fix, not a request to unlock a gated app feature.
+          required: true
+        - label: It is broken on Anthropic's official `.deb` too (not something this repack introduced).
+          required: true
