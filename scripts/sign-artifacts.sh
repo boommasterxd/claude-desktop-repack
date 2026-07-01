@@ -26,6 +26,12 @@ fi
 
 export GNUPGHOME="$(mktemp -d)"
 chmod 700 "$GNUPGHOME"
+# Each GitHub Actions step runs in its own shell, so a plain `export` here is
+# invisible to later steps (e.g. "Build Pages site", which re-derives
+# GPG_KEY_ID and re-signs the pacman/apt repo metadata with this same key).
+# Persist it job-wide via $GITHUB_ENV so those steps' gpg finds the imported
+# secret key instead of a fresh, empty keyring.
+[ -n "${GITHUB_ENV:-}" ] && echo "GNUPGHOME=$GNUPGHOME" >> "$GITHUB_ENV"
 printf '%s\n' "$GPG_PRIVATE_KEY" | gpg --batch --import
 KEYID="$(gpg --list-secret-keys --with-colons | awk -F: '/^sec:/{print $5; exit}')"
 [ -n "$KEYID" ] || { echo "sign: no secret key imported" >&2; exit 1; }
