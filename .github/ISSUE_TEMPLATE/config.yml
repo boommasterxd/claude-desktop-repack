@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Bug in Claude Desktop itself (not the packaging)
+    url: https://support.anthropic.com
+    about: >-
+      This repo only repackages Anthropic's official Linux build. Bugs in the app
+      itself (login, chat, models, account, or anything that also happens on the
+      official .deb) belong to Anthropic. Please report those there, not here.
+  - name: Install instructions
+    url: https://boommasterxd.github.io/claude-desktop-repack/
+    about: One-liners for every distro plus the signed dnf/pacman/apt repos.

@@ -1,0 +1,89 @@
+name: Packaging / install bug
+description: Something wrong with the repackage, an install repo, an update, or a patch (Quick Entry, Cowork, WM_CLASS).
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Use this for problems with **the repackage itself**: installing from the
+        rpm/pacman/apt repos, a package that won't install or update, a broken
+        launcher/icon/`.desktop`, or one of the patches (Quick Entry hotkey,
+        Quick Entry window, Cowork firmware paths / install hint).
+        Bugs that also occur on Anthropic's official `.deb` belong to Anthropic.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The release you installed, e.g. `1.17377.1-4` (from `rpm -q` / `pacman -Q` / `apt policy claude-desktop-repack`).
+      placeholder: 1.17377.1-4
+    validations:
+      required: true
+  - type: dropdown
+    id: format
+    attributes:
+      label: Install format
+      options:
+        - dnf/zypper repo (Fedora / RHEL / openSUSE)
+        - pacman repo (Arch / Manjaro)
+        - apt repo (Debian / Ubuntu)
+        - .rpm direct download
+        - .deb direct download
+        - .pkg.tar.zst direct download
+        - AppImage
+        - tarball
+        - Nix flake
+    validations:
+      required: true
+  - type: input
+    id: distro
+    attributes:
+      label: Distro & version
+      placeholder: Fedora 43 KDE / Arch / Ubuntu 24.04 / NixOS 24.11
+    validations:
+      required: true
+  - type: dropdown
+    id: arch
+    attributes:
+      label: Architecture
+      options:
+        - x86_64 / amd64
+        - aarch64 / arm64
+    validations:
+      required: true
+  - type: dropdown
+    id: session
+    attributes:
+      label: Session type
+      description: Relevant for the Quick Entry / WM_CLASS patches. Check with `echo $XDG_SESSION_TYPE` and your desktop.
+      options:
+        - X11
+        - Wayland - GNOME
+        - Wayland - KDE Plasma
+        - Wayland - wlroots (Sway / Hyprland)
+        - XWayland
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant output / logs
+      description: >-
+        Terminal output (run `claude-desktop` from a terminal to see the
+        `[claude-cu] diagnostics:` lines), and/or `~/.config/Claude/logs/main.log`.
+        This will be formatted as code, no backticks needed.
+      render: shell
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Confirmation
+      options:
+        - label: This is a packaging/install/patch issue, not a bug that also happens on Anthropic's official `.deb`.
+          required: true
