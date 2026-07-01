@@ -26,7 +26,7 @@ esac
 WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
 "$HERE/fetch-deb.sh" "$DEB_ARCH" "$WORK"
 VERSION="$(cat "$WORK/version")"
-PKGREL="$(bash "$HERE/pkgrel.sh" "$VERSION")"
+PKGREL="${PKGREL:-0}"
 FULLVER="${VERSION}-${PKGREL}"
 
 APPDIR="$WORK/AppDir"

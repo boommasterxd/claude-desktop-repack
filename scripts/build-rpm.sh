@@ -22,7 +22,7 @@ trap 'rm -rf "$WORK"' EXIT
 # 1. Fetch + verify + extract the official .deb.
 "$HERE/fetch-deb.sh" "$DEB_ARCH" "$WORK"
 VERSION="$(cat "$WORK/version")"
-PKGREL="$(bash "$HERE/pkgrel.sh" "$VERSION")"
+PKGREL="${PKGREL:-0}"
 
 # 2. Build the RPM with rpmbuild (cross-arch is fine: we only package files).
 #    Version = upstream, Release = our pkgrel (so a fix rebuild is an upgrade).

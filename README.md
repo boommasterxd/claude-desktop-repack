@@ -109,8 +109,10 @@ have the same kind of per-`WM_CLASS` blacklist.
   notes, and validated automatically (a non-matching patch fails the build and
   files an issue). Nothing else to wire.
 - **Ship a packaging fix** for the same upstream version (e.g. after fixing a
-  patch): bump the number in `.pkgrel` (format `<version> <n>`) in your PR. The
-  next build publishes `v<version>-<n>` (RPM `Release`, deb revision), which
-  package managers see as an upgrade. A new upstream version resets it to 0.
+  patch): merge the fix, then run the workflow with **`force: true`**. It
+  publishes the next revision `v<version>-<N>` (RPM `Release`, deb revision),
+  which package managers see as an upgrade. A new upstream version starts at
+  `-0` again. The revision is derived from the published releases, nothing to
+  edit.
 - Release notes are generated: the patch list from `patches/`, plus a changelog
   of your commits since the previous release, grouped by conventional-commit type.

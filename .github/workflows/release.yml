@@ -27,6 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.d.outputs.version }}
+      pkgrel: ${{ steps.d.outputs.pkgrel }}
       fullver: ${{ steps.d.outputs.fullver }}
       should_release: ${{ steps.d.outputs.should_release }}
     steps:
@@ -42,22 +43,30 @@ jobs:
             echo "Refusing unexpected version string: $VERSION" >&2
             exit 1
           fi
-          # Our packaging revision. Bump it in .pkgrel to rebuild the same
-          # upstream version (a fix); a new upstream version resets it to 0.
-          PKGREL="$(bash scripts/pkgrel.sh "$VERSION")"
-          FULLVER="$VERSION-$PKGREL"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "fullver=$FULLVER" >> "$GITHUB_OUTPUT"
-          # State is the existence of the release itself (keyed by version-pkgrel),
-          # so the workflow never writes back to the repo and can't desync from
-          # what is published. Bumping .pkgrel makes v<ver>-<rel> a new release.
-          if [ "$FORCE" != "true" ] && gh release view "v$FULLVER" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "Release v$FULLVER already exists, nothing to do."
-            echo "should_release=false" >> "$GITHUB_OUTPUT"
+
+          # Packaging revision (pkgrel), derived from the published releases, no
+          # committed state. Highest existing v<version>-<N>:
+          esc="$(printf '%s' "$VERSION" | sed 's/[.]/\\./g')"
+          maxrel="$(gh release list -R "$GITHUB_REPOSITORY" -L 1000 --json tagName -q '.[].tagName' 2>/dev/null \
+                    | grep -E "^v${esc}-[0-9]+$" | sed -E "s/^v${esc}-//" | sort -n | tail -1)"
+
+          if [ -z "$maxrel" ]; then
+            # Never released this upstream version -> first packaging, -0.
+            PKGREL=0; SHOULD=true
+          elif [ "$FORCE" = "true" ]; then
+            # A fix rebuild for the same upstream version -> next revision.
+            PKGREL=$((maxrel + 1)); SHOULD=true
           else
-            echo "Will build and release v$FULLVER."
-            echo "should_release=true" >> "$GITHUB_OUTPUT"
+            # Already released and nothing forced -> nothing to do.
+            PKGREL="$maxrel"; SHOULD=false
           fi
+          FULLVER="$VERSION-$PKGREL"
+
+          echo "Upstream $VERSION, highest published pkgrel: ${maxrel:-none} -> building v$FULLVER = $SHOULD"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "pkgrel=$PKGREL" >> "$GITHUB_OUTPUT"
+          echo "fullver=$FULLVER" >> "$GITHUB_OUTPUT"
+          echo "should_release=$SHOULD" >> "$GITHUB_OUTPUT"
 
   build:
     needs: detect
@@ -69,6 +78,7 @@ jobs:
         arch: [amd64, arm64]
     env:
       ARCH: ${{ matrix.arch }}
+      PKGREL: ${{ needs.detect.outputs.pkgrel }}
       APPIMAGE_EXTRACT_AND_RUN: '1'
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
