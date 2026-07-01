@@ -12,6 +12,7 @@ RHEL, openSUSE and others are left out.
 This repo takes the **official `.deb`** and re-wraps it into:
 
 - **RPM** (x86_64, aarch64) for Fedora / RHEL / openSUSE
+- **Arch package** `.pkg.tar.zst` (x86_64, aarch64) for Arch / Manjaro / EndeavourOS
 - **AppImage** + `.zsync` (x86_64, aarch64) for any glibc distro
 - **tarball** (x86_64, aarch64), generic and portable
 - **.deb** (amd64, arm64), rebuilt for parity (on Debian/Ubuntu prefer the
@@ -19,8 +20,8 @@ This repo takes the **official `.deb`** and re-wraps it into:
 
 A scheduled GitHub Action watches Anthropic's apt index and publishes a new
 signed GitHub Release whenever upstream releases a new version. The only change
-to the app is two small GNOME-Wayland patches (see [Patches](#patches) below);
-everything else is a faithful repackage.
+to the app is a few small patches (see [Patches](#patches) below); everything
+else is a faithful repackage.
 
 > Not affiliated with or endorsed by Anthropic. Source of truth:
 > <https://claude.com/download>.
@@ -32,6 +33,10 @@ Grab the file for your distro and architecture from [Releases](../../releases):
 ```bash
 # Fedora / RHEL / openSUSE
 sudo dnf install ./claude-desktop-repack-*.x86_64.rpm
+
+# Arch / Manjaro / EndeavourOS
+sudo pacman -U ./claude-desktop-repack-*-x86_64.pkg.tar.zst
+# (or build it yourself: download the release PKGBUILD + .install, then `makepkg -si`)
 
 # Portable (any distro)
 chmod +x claude-desktop-repack-*-x86_64.AppImage && ./claude-desktop-repack-*-x86_64.AppImage

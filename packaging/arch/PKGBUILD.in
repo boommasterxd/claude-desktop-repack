@@ -1,0 +1,47 @@
+# Maintainer: boommasterxd
+# Repackaged from Anthropic's official Claude Desktop Linux .deb.
+#
+# This is a template. Placeholders ({{VERSION}} etc.) are filled by
+# scripts/render-pkgbuild.mjs: the release job attaches a ready-to-use PKGBUILD
+# (sourcing the release tarball) so `makepkg` users can build it, and
+# scripts/build-arch.sh fills it locally (sourcing the just-built tarball) to
+# produce the .pkg.tar.zst that CI attaches for `pacman -U`.
+pkgname=claude-desktop-repack
+pkgver={{VERSION}}
+pkgrel={{PKGREL}}
+pkgdesc="Claude Desktop for Linux, repackaged from Anthropic's official .deb"
+arch=('x86_64' 'aarch64')
+url="https://github.com/{{REPO}}"
+license=('LicenseRef-Anthropic')
+depends=('gtk3' 'nss' 'alsa-lib' 'libxtst' 'libnotify')
+optdepends=('qemu-full: Cowork agent workspace VM'
+            'edk2-ovmf: Cowork VM UEFI firmware'
+            'virtiofsd: Cowork VM host/guest file sharing'
+            'nodejs: system Node.js for MCP servers that need a specific version'
+            'claude-code: Claude Code CLI for agentic coding features'
+            'socat: faster Quick Entry hotkey toggle (~2ms vs ~25ms python3)')
+provides=('claude-desktop')
+conflicts=('claude-desktop' 'claude-desktop-bin')
+install="$pkgname.install"
+options=('!strip' '!debug' 'emptydirs')
+source_x86_64=("{{SRC_X64}}")
+sha256sums_x86_64=('{{SHA_X64}}')
+source_aarch64=("{{SRC_AARCH64}}")
+sha256sums_aarch64=('{{SHA_AARCH64}}')
+
+package() {
+  # The tarball unpacks to claude-desktop-repack-<ver>-<rel>-linux[-aarch64]/
+  # containing the official .deb's usr/ tree (already patched) plus a relocatable
+  # launcher we do not use here. Install the usr/ tree verbatim: it keeps the
+  # /usr/lib/claude-desktop layout, the /usr/bin/claude-desktop symlink to the
+  # real (sandboxed) Electron binary, and the claude-desktop-hotkey helper.
+  local _dir="claude-desktop-repack-${pkgver}-${pkgrel}-linux"
+  [ "$CARCH" = "aarch64" ] && _dir="${_dir}-aarch64"
+  cp -a "$srcdir/$_dir/usr" "$pkgdir/usr"
+
+  # Chromium's setuid sandbox helper (cp above dropped the bit).
+  chmod 4755 "$pkgdir/usr/lib/claude-desktop/chrome-sandbox"
+
+  # Debian packaging-lint metadata, meaningless on Arch.
+  rm -rf "$pkgdir/usr/share/lintian"
+}
