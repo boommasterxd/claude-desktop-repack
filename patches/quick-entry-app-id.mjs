@@ -11,6 +11,8 @@
 // Ported from patches/fix_quick_entry_app_id.nim of the claude-desktop-bin project.
 
 export const name = "quick-entry-app-id";
+export const description =
+  "gives the Quick Entry window its own WM_CLASS (`claude-quick-entry`) so GNOME corner/shadow extensions can exclude just it";
 
 const QE_APP_ID = "claude-quick-entry";
 const MAIN_APP_ID = "claude";

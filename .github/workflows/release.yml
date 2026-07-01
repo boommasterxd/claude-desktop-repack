@@ -90,6 +90,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: artifacts
@@ -110,8 +113,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           V: ${{ needs.detect.outputs.version }}
         run: |
-          sed -e "s/__VERSION__/$V/g" -e "s#__REPO__#$GITHUB_REPOSITORY#g" \
-            packaging/release-notes.md.tmpl > NOTES.md
+          node scripts/render-notes.mjs "$V" "$GITHUB_REPOSITORY" > NOTES.md
           gh release create "v$V" dist/* --title "Claude Desktop $V" --notes-file NOTES.md \
             || { gh release edit "v$V" --title "Claude Desktop $V" --notes-file NOTES.md; \
                  gh release upload "v$V" dist/* --clobber; }

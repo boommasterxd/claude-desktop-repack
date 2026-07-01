@@ -10,6 +10,8 @@
 // debounce. Ported from patches/fix_quick_entry_cli_toggle.nim.
 
 export const name = "quick-entry-cli-toggle";
+export const description =
+  "exposes the Quick Entry toggle over a Unix socket for a working GNOME Wayland hotkey (`claude-desktop-hotkey`)";
 
 const HANDLER = "globalThis.__ceQuickEntryShow";
 const FLAG = "--toggle-quick-entry";

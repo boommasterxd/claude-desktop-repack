@@ -15,10 +15,7 @@ import { join } from "node:path";
 import { execFileSync } from "node:child_process";
 import { extractAll, createPackageWithOptions, getRawHeader } from "@electron/asar";
 
-import * as appId from "../patches/quick-entry-app-id.mjs";
-import * as toggle from "../patches/quick-entry-cli-toggle.mjs";
-
-const PATCHES = [appId, toggle];
+import { patches as PATCHES } from "../patches/index.mjs";
 
 const payloadDir = process.argv[2];
 const version = process.argv[3] || "unknown";
