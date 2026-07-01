@@ -6,7 +6,7 @@
 with signed install repos and automatic updates.**
 
 [![CI](https://github.com/boommasterxd/claude-desktop-repack/actions/workflows/ci.yml/badge.svg)](https://github.com/boommasterxd/claude-desktop-repack/actions/workflows/ci.yml)
-[![Latest release](https://img.shields.io/github/v/release/boommasterxd/claude-desktop-repack?label=release&color=7c3aed)](https://github.com/boommasterxd/claude-desktop-repack/releases/latest)
+[![Latest release](https://img.shields.io/github/v/release/boommasterxd/claude-desktop-repack?label=release&color=7c3aed&cacheSeconds=1800)](https://github.com/boommasterxd/claude-desktop-repack/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/boommasterxd/claude-desktop-repack/total?color=7c3aed)](https://github.com/boommasterxd/claude-desktop-repack/releases)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
 [![Install page](https://img.shields.io/badge/install-page-7c3aed)](https://boommasterxd.github.io/claude-desktop-repack/)
@@ -242,5 +242,20 @@ distro. Cosmetic and fully guarded: any failure falls back to the original strin
 
 ## Contributing
 
-Want to hack on the packaging (add a patch, a format, tweak the pipeline)? See
-[CLAUDE.md](CLAUDE.md) for the full architecture, conventions and how-tos.
+Contributions are welcome. Build the packages locally into `./dist`:
+
+```bash
+npm ci
+bash scripts/build-local.sh              # all formats, amd64
+bash scripts/build-local.sh amd64 rpm    # just one format
+```
+
+To add or fix a patch, drop a small ES module into `patches/` that exports `name`
+and `apply(code) -> code`; it is auto-discovered, applied at build time, and
+validated (a non-matching patch fails the build). Patches should anchor on stable
+string literals and use `[\w$]+` for minified identifiers so they survive upstream
+re-minification.
+
+PRs target `main` (protected): use [Conventional Commit](https://www.conventionalcommits.org)
+titles (`fix(...)`, `feat(...)`, `docs: ...`), and the `CI` + `gitleaks` checks must
+pass before merge.
