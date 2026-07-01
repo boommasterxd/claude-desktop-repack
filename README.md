@@ -6,7 +6,7 @@
 with signed install repos and automatic updates.**
 
 [![CI](https://github.com/boommasterxd/claude-desktop-repack/actions/workflows/ci.yml/badge.svg)](https://github.com/boommasterxd/claude-desktop-repack/actions/workflows/ci.yml)
-[![Latest release](https://img.shields.io/github/v/release/boommasterxd/claude-desktop-repack?label=release&color=7c3aed&cacheSeconds=1800)](https://github.com/boommasterxd/claude-desktop-repack/releases/latest)
+[![Latest release](https://img.shields.io/endpoint?url=https%3A%2F%2Fboommasterxd.github.io%2Fclaude-desktop-repack%2Fbadges%2Frelease.json)](https://github.com/boommasterxd/claude-desktop-repack/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/boommasterxd/claude-desktop-repack/total?color=7c3aed)](https://github.com/boommasterxd/claude-desktop-repack/releases)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
 [![Install page](https://img.shields.io/badge/install-page-7c3aed)](https://boommasterxd.github.io/claude-desktop-repack/)
@@ -143,6 +143,23 @@ gpg --verify SHA256SUMS.txt.asc SHA256SUMS.txt && sha256sum -c SHA256SUMS.txt
 Package name: `claude-desktop-repack` (so `dnf`/`apt`/`pacman` show it as ours);
 app identity (binary, `.desktop`, icon, WM_CLASS, `claude://` handler) stays
 `claude-desktop`, indistinguishable from the official build.
+
+## Versions
+
+What each channel currently serves, updated automatically on every release. Each
+distro badge reads the version recorded in **that repo's own metadata**, so it also
+confirms the signed repo actually carries the latest build:
+
+| Channel | Version |
+|---------|---------|
+| GitHub release | [![release](https://img.shields.io/endpoint?url=https%3A%2F%2Fboommasterxd.github.io%2Fclaude-desktop-repack%2Fbadges%2Frelease.json)](https://github.com/boommasterxd/claude-desktop-repack/releases/latest) |
+| Fedora / RHEL / openSUSE <sub>(dnf)</sub> | [![dnf](https://img.shields.io/endpoint?url=https%3A%2F%2Fboommasterxd.github.io%2Fclaude-desktop-repack%2Fbadges%2Ffedora.json)](#fedora--rhel--opensuse-dnf--zypper) |
+| Arch / Manjaro / EndeavourOS <sub>(pacman)</sub> | [![pacman](https://img.shields.io/endpoint?url=https%3A%2F%2Fboommasterxd.github.io%2Fclaude-desktop-repack%2Fbadges%2Farch.json)](#arch--manjaro--endeavouros-pacman) |
+| Debian / Ubuntu <sub>(apt)</sub> | [![apt](https://img.shields.io/endpoint?url=https%3A%2F%2Fboommasterxd.github.io%2Fclaude-desktop-repack%2Fbadges%2Fdebian.json)](#debian--ubuntu-apt) |
+
+These are shields **endpoint** badges reading small JSON files from our own Pages
+site, so they never hit a GitHub API rate limit and can't get stuck on a stale
+"invalid" image the way a live query can.
 
 ## Patches
 
