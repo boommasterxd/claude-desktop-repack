@@ -152,16 +152,20 @@ jobs:
           gh release create "v$FULLVER" dist/* --title "Claude Desktop $FULLVER" --notes-file NOTES.md \
             || { gh release edit "v$FULLVER" --title "Claude Desktop $FULLVER" --notes-file NOTES.md; \
                  gh release upload "v$FULLVER" dist/* --clobber; }
-      - name: Bump Nix flake pin (new upstream version only)
-        # The Arch PKGBUILD is rendered fresh per release, but the Nix flake pins
-        # version + .deb shas in-repo. On a new upstream version, open a PR that
-        # bumps them (main is protected, so a PR, not a direct push). Skipped on
-        # force rebuilds (same upstream -> pkgrel > 0 -> identical .deb).
-        if: needs.detect.outputs.pkgrel == '0'
+      - name: Bump Nix flake pin (release-coupled)
+        # The Nix flake fetches this repo's release tarball, so its pin (version +
+        # pkgrel + per-arch tarball sha256) must track every release - each -N
+        # ships a different tarball. Open a PR bumping it (main is protected, so a
+        # PR, not a direct push) and arm auto-merge.
+        #
+        # Uses NIX_BUMP_TOKEN (a PAT) if set, else GITHUB_TOKEN. Auto-merge only
+        # COMPLETES with the PAT: a PR opened by GITHUB_TOKEN does not trigger the
+        # required `gitleaks` check, so it would sit pending forever.
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.NIX_BUMP_TOKEN || github.token }}
           V: ${{ needs.detect.outputs.version }}
-        run: bash scripts/bump-nix-pin.sh "$V"
+          PKGREL: ${{ needs.detect.outputs.pkgrel }}
+        run: bash scripts/bump-nix-pin.sh "$V" "$PKGREL" dist
 
   notify-failure:
     needs: [detect, build, release]
