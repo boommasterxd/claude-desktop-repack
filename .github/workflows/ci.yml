@@ -1,9 +1,12 @@
 name: CI
 
 # Validates every PR (and every push to main): applies the patches and builds all
-# package formats for amd64, so a broken patch or build script is caught before
-# merge. Deliberately does NOT upload the artifacts - building in the runner costs
-# no storage, only uploading does; the real artifacts are published by release.yml.
+# package formats for amd64, split across parallel jobs (mirroring release.yml's
+# fetch -> build-format -> build-arch-pkg pipeline) instead of one job building
+# all five formats sequentially. Only the tarball is uploaded between jobs (so
+# build-arch-pkg can reuse it, same as build-arch.sh does locally); no format's
+# output is kept afterwards - proving the build succeeds is the point, not
+# producing artifacts (the real ones are published by release.yml).
 on:
   push:
     branches: [main]
@@ -18,11 +21,8 @@ permissions:
   contents: read
 
 jobs:
-  CI:
-    name: CI
+  fetch:
     runs-on: ubuntu-latest
-    env:
-      APPIMAGE_EXTRACT_AND_RUN: '1'
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
@@ -30,10 +30,69 @@ jobs:
           node-version: "24"
           cache: npm
       - run: npm ci
+      - name: Install fetch tooling
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends binutils xz-utils curl
+      - name: Fetch + verify + patch the official .deb
+        run: bash scripts/fetch-deb.sh amd64 payload
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: payload-amd64
+          path: payload
+          retention-days: 1   # only needed by build-format moments later
+
+  # rpm/tarball/appimage/deb, one parallel job per format (mirrors release.yml's
+  # build-format matrix), all validating against the payload fetch fetched above.
+  build-format:
+    needs: fetch
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - format: rpm
+            packages: rpm
+          - format: deb
+            packages: dpkg binutils xz-utils
+          - format: tarball
+            packages: ""
+          - format: appimage
+            packages: curl zsync
+    env:
+      APPIMAGE_EXTRACT_AND_RUN: '1'
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Install build tooling
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends rpm dpkg binutils xz-utils curl zsync
-      - name: Fetch + verify + patch the official .deb once (shared by all formats)
-        run: bash scripts/fetch-deb.sh amd64 payload-amd64
+        if: matrix.packages != ''
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ${{ matrix.packages }}
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: payload-amd64
+          path: payload
+      - name: Build ${{ matrix.format }} (amd64) to validate patches + build script
+        env:
+          PAYLOAD_DIR: ${{ github.workspace }}/payload
+        run: bash "scripts/build-${{ matrix.format }}.sh" amd64 dist
+      # Only the tarball is needed by build-arch-pkg below; the other formats'
+      # output just has to build successfully, not be kept anywhere.
+      - name: Upload tarball (only format build-arch-pkg needs)
+        if: matrix.format == 'tarball'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dist-amd64-tarball
+          path: dist/*
+          retention-days: 1
+
+  # Arch .pkg.tar.zst via makepkg in an archlinux container, reusing the tarball
+  # build-format already produced (same as build-arch.sh's local reuse path).
+  build-arch-pkg:
+    needs: build-format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: dist-amd64-tarball
+          path: dist
       - name: Compute weekly cache bucket
         id: cachekey
         run: echo "week=$(date -u +%G-W%V)" >> "$GITHUB_OUTPUT"
@@ -42,19 +101,18 @@ jobs:
         with:
           path: pacman-cache
           key: pacman-amd64-${{ steps.cachekey.outputs.week }}
-      - name: Build all formats (amd64) to validate patches + builds, no upload
+      - name: Build Arch package (validates build-arch.sh, no upload)
         env:
-          PAYLOAD_DIR: ${{ github.workspace }}/payload-amd64
           PACMAN_CACHE_DIR: ${{ github.workspace }}/pacman-cache
-        run: |
-          # Each build (besides arch, which reuses the tarball below) reuses the
-          # payload fetched above via PAYLOAD_DIR instead of re-fetching +
-          # re-patching per format, exercising the guards, every patch, and every
-          # build script exactly once. Output stays on the ephemeral runner and is
-          # never uploaded.
-          bash scripts/build-rpm.sh      amd64 dist
-          bash scripts/build-tarball.sh  amd64 dist
-          bash scripts/build-appimage.sh amd64 dist
-          bash scripts/build-deb.sh      amd64 dist
-          bash scripts/build-arch.sh     amd64 dist
-          echo "CI: all formats built OK (not uploaded)."
+        run: bash scripts/build-arch.sh amd64 dist
+
+  # Required-status-check gate: branch protection expects a check named "CI".
+  # Splitting the format builds above means none of those jobs is individually
+  # named "CI" anymore, so this job exists purely to be that gate - it only runs
+  # (and succeeds) once fetch/build-format/build-arch-pkg have all succeeded.
+  CI:
+    name: CI
+    needs: [fetch, build-format, build-arch-pkg]
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "All formats built OK across parallel jobs (not uploaded)."
