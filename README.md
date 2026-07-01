@@ -240,25 +240,7 @@ runtime translator: on Debian/Ubuntu it is returned unchanged, otherwise the fir
 of `dnf`/`pacman`/`zypper` found rewrites the manager and package names for that
 distro. Cosmetic and fully guarded: any failure falls back to the original string.
 
-## Maintaining
+## Contributing
 
-- **Add a patch:** drop a module into `patches/` that exports `name`, `apply(code)`
-  and (optional) `description`. It is applied by the build, listed in the release
-  notes, and validated automatically (a non-matching patch fails the build and
-  files an issue). Nothing else to wire.
-- **New upstream system paths:** the build scans the bundle for absolute system
-  paths and fails if one appears that is not in `baseline/system-paths.json`. A
-  new `/usr/share`, `/usr/lib`, `/usr/libexec` (etc.) path may be Debian-specific
-  and break Fedora/RHEL/Arch (like the OVMF firmware paths). Review it, then
-  allowlist benign ones (`node scripts/check-native-paths.mjs <payloadDir> --update`,
-  review the diff) or write a patch for Debian-specific ones.
-- **Ship a packaging fix** for the same upstream version (e.g. after fixing a
-  patch): merge the fix, then run the workflow with **`force: true`**. It
-  publishes the next revision `v<version>-<N>` (RPM `Release`, deb revision),
-  which package managers see as an upgrade. A new upstream version starts at
-  `-0` again. The revision is derived from the published releases, nothing to
-  edit.
-- Release notes are generated: the patch list from `patches/`, plus a changelog
-  of your commits since the previous release, grouped by conventional-commit type.
-
-See [CLAUDE.md](CLAUDE.md) for the full pipeline, conventions and internals.
+Want to hack on the packaging (add a patch, a format, tweak the pipeline)? See
+[CLAUDE.md](CLAUDE.md) for the full architecture, conventions and how-tos.
