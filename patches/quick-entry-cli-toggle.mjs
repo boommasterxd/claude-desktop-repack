@@ -20,7 +20,13 @@ const FLAG_SHORT = "--toggle";
 export function apply(code) {
   // A + C + D: capture the QUICK_ENTRY toggle handler, add debounce, expose it
   // globally, schedule the first-instance argv check, and open the trigger socket.
-  const qeRe = /([\w$]+)\(([\w$]+)\.QUICK_ENTRY,(\(\)=>\{[\w$]+&&![\w$]+\.isDestroyed\(\)&&[\w$]+\.isFullScreen\(\)\?\([\w$]+\.focus\(\),[\w$]+\([\w$]*\)\):[\w$]+\([\w$]*\)\})\)/g;
+  // Anchor on the registration call `fn(<enum>.QUICK_ENTRY, ()=>{ ... })` and
+  // capture the arrow with a generic brace-free body (`[^{}]*`) rather than the
+  // exact ternary. We only wrap the body, so its internal logic can change
+  // (a handler-logic refactor) without breaking the patch. Verified to still
+  // match exactly once. If a future body gains nested braces or extra args the
+  // count check fails loud and files an issue, rather than mis-patching.
+  const qeRe = /([\w$]+)\(([\w$]+)\.QUICK_ENTRY,(\(\)=>\{[^{}]*\})\)/g;
   let countA = 0;
   code = code.replace(qeRe, (m, regFn, enumVar, arrow) => {
     countA++;
