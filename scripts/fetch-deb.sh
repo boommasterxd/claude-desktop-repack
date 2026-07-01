@@ -39,10 +39,15 @@ test -x "$OUT/payload/usr/lib/claude-desktop/claude-desktop" \
 test -u "$OUT/payload/usr/lib/claude-desktop/chrome-sandbox" \
   || echo "fetch-deb: WARNING chrome-sandbox is not setuid in the payload" >&2
 
-# Bundle our Quick Entry hotkey helper into the payload so every package ships it
-# in PATH at /usr/bin/claude-quick-entry. The app itself stays unmodified; this is
-# just an extra standalone CLI helper (see extras/claude-quick-entry and README).
-install -Dm755 "$HERE/../extras/claude-quick-entry" "$OUT/payload/usr/bin/claude-quick-entry"
-
 printf '%s\n' "$VERSION" > "$OUT/version"
-echo "fetch-deb: payload ready in $OUT/payload (version $VERSION)"
+
+# Apply the two minimal GNOME-Wayland patches to the payload's app.asar (Quick
+# Entry hotkey toggle + own WM_CLASS) and swap the /usr/bin launcher so
+# `claude-desktop --toggle` / `--install-gnome-hotkey` work. Needs node +
+# node_modules (npm ci). Fails loud (naming the patches) if a pattern no longer
+# matches, so CI can open a per-version issue.
+node "$HERE/patch-payload.mjs" "$OUT/payload" "$VERSION"
+rm -f "$OUT/payload/usr/bin/claude-desktop"
+install -Dm755 "$HERE/../packaging/launcher/claude-desktop" "$OUT/payload/usr/bin/claude-desktop"
+
+echo "fetch-deb: payload ready in $OUT/payload (version $VERSION, patched)"
