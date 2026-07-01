@@ -1,0 +1,31 @@
+name: Packaging request
+description: Request a new format/distro, an additional arch, or a packaging improvement.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        For requests about **how the app is packaged and distributed** (a new
+        format or distro, another architecture, repo/signing changes). This is not
+        the place to request new **app** features gated by Anthropic. This repo
+        ships the app as Anthropic ships it plus small Linux fixes; for unlocked
+        extras see patrickjaja/claude-desktop-bin (linked in the README).
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What are you requesting?
+      options:
+        - A new package format
+        - Support for another distro
+        - Another architecture
+        - A packaging / repo / signing improvement
+        - Something else
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Details
+      description: What you want, for which distro/format/arch, and why the existing formats don't cover it.
+    validations:
+      required: true
