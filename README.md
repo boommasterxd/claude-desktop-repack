@@ -66,11 +66,22 @@ See [Patches](#patches) for the details on all four.
 The recommended way is a **signed repo with automatic updates**. All one-liners are
 also on the [install page](https://boommasterxd.github.io/claude-desktop-repack/).
 
-### Fedora / RHEL / openSUSE <sub>(dnf / zypper)</sub>
+### Fedora / RHEL <sub>(dnf)</sub>
 
 ```bash
-sudo dnf config-manager --add-repo https://boommasterxd.github.io/claude-desktop-repack/rpm/claude-desktop-repack.repo
+sudo curl -fsSL -o /etc/yum.repos.d/claude-desktop-repack.repo https://boommasterxd.github.io/claude-desktop-repack/rpm/claude-desktop-repack.repo
 sudo dnf install claude-desktop-repack        # then: sudo dnf upgrade
+```
+
+(Works on both dnf5 and dnf4. The old `dnf config-manager --add-repo` was dropped
+in dnf5 / Fedora 41+, so we just drop the `.repo` file in directly.)
+
+### openSUSE <sub>(zypper)</sub>
+
+```bash
+sudo zypper addrepo -f https://boommasterxd.github.io/claude-desktop-repack/rpm/claude-desktop-repack.repo
+sudo zypper --gpg-auto-import-keys refresh
+sudo zypper install claude-desktop-repack
 ```
 
 ### Arch / Manjaro / EndeavourOS <sub>(pacman)</sub>
@@ -78,10 +89,7 @@ sudo dnf install claude-desktop-repack        # then: sudo dnf upgrade
 ```bash
 curl -fsSL https://boommasterxd.github.io/claude-desktop-repack/RELEASE-PUBKEY.asc | sudo pacman-key --add -
 sudo pacman-key --lsign-key 2874A3CDE4A67DD1
-# append to /etc/pacman.conf:
-#   [claude-desktop-repack]
-#   SigLevel = Required
-#   Server = https://boommasterxd.github.io/claude-desktop-repack/arch/$arch
+printf '\n[claude-desktop-repack]\nSigLevel = Required\nServer = https://boommasterxd.github.io/claude-desktop-repack/arch/$arch\n' | sudo tee -a /etc/pacman.conf
 sudo pacman -Sy claude-desktop-repack
 ```
 

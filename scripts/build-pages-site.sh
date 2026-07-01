@@ -46,21 +46,21 @@ cat > "$SITE/index.html" <<EOF
 <h1>Claude Desktop <span style="color:#7c3aed">(repack)</span></h1>
 <p class="sub">Unofficial Linux repackage of Anthropic's official build. Version ${V}-${REL}.</p>
 
-<h2>Fedora / RHEL / openSUSE (dnf/zypper)</h2>
-<pre>sudo dnf config-manager --add-repo ${PAGES_URL}/rpm/claude-desktop-repack.repo
+<h2>Fedora / RHEL (dnf)</h2>
+<pre>sudo curl -fsSL -o /etc/yum.repos.d/claude-desktop-repack.repo ${PAGES_URL}/rpm/claude-desktop-repack.repo
 sudo dnf install claude-desktop-repack</pre>
-<p>Updates come with <code>sudo dnf upgrade</code>. Packages are served from the GitHub
-Release; only the repo metadata is hosted here.</p>
+<p>Works on dnf5 and dnf4. Updates come with <code>sudo dnf upgrade</code>. Packages are
+served from the GitHub Release; only the repo metadata is hosted here.</p>
+
+<h2>openSUSE (zypper)</h2>
+<pre>sudo zypper addrepo -f ${PAGES_URL}/rpm/claude-desktop-repack.repo
+sudo zypper --gpg-auto-import-keys refresh
+sudo zypper install claude-desktop-repack</pre>
 
 <h2>Arch / Manjaro (pacman)</h2>
 <pre>curl -fsSL ${PAGES_URL}/RELEASE-PUBKEY.asc | sudo pacman-key --add -
 sudo pacman-key --lsign-key ${KEY_FP}
-
-# add to /etc/pacman.conf:
-[claude-desktop-repack]
-SigLevel = ${PACMAN_SIGLEVEL}
-Server = ${PAGES_URL}/arch/\$arch
-
+printf '\n[claude-desktop-repack]\nSigLevel = ${PACMAN_SIGLEVEL}\nServer = ${PAGES_URL}/arch/\$arch\n' | sudo tee -a /etc/pacman.conf
 sudo pacman -Sy claude-desktop-repack</pre>
 
 <h2>Debian / Ubuntu (apt)</h2>
