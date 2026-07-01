@@ -31,6 +31,19 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 OUT="dist"
 mkdir -p "$OUT"
 
+# rpm/deb/tarball/appimage all fetch+patch the same official .deb; when more
+# than one is requested, do it once here and share it via PAYLOAD_DIR instead
+# of repeating the fetch+patch per format (same trick CI uses).
+for fmt in "${FORMATS[@]}"; do
+  case "$fmt" in rpm|deb|tarball|appimage)
+    PAYLOAD_DIR="$(mktemp -d)"
+    trap 'rm -rf "$PAYLOAD_DIR"' EXIT
+    bash "$HERE/fetch-deb.sh" "$ARCH" "$PAYLOAD_DIR"
+    export PAYLOAD_DIR
+    break ;;
+  esac
+done
+
 for fmt in "${FORMATS[@]}"; do
   case "$fmt" in
     rpm)      bash "$HERE/build-rpm.sh"      "$ARCH" "$OUT" ;;

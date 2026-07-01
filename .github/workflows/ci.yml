@@ -31,12 +31,18 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Install build tooling
-        run: sudo apt-get update && sudo apt-get install -y rpm dpkg binutils xz-utils curl zsync
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends rpm dpkg binutils xz-utils curl zsync
+      - name: Fetch + verify + patch the official .deb once (shared by all formats)
+        run: bash scripts/fetch-deb.sh amd64 payload-amd64
       - name: Build all formats (amd64) to validate patches + builds, no upload
+        env:
+          PAYLOAD_DIR: ${{ github.workspace }}/payload-amd64
         run: |
-          # Each build runs fetch-deb -> check-native-paths + patch-payload
-          # (fail-loud), so this exercises the guards, every patch, and every build
-          # script. Output stays on the ephemeral runner and is never uploaded.
+          # Each build (besides arch, which reuses the tarball below) reuses the
+          # payload fetched above via PAYLOAD_DIR instead of re-fetching +
+          # re-patching per format, exercising the guards, every patch, and every
+          # build script exactly once. Output stays on the ephemeral runner and is
+          # never uploaded.
           bash scripts/build-rpm.sh      amd64 dist
           bash scripts/build-tarball.sh  amd64 dist
           bash scripts/build-appimage.sh amd64 dist

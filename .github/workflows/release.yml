@@ -87,12 +87,20 @@ jobs:
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: '24'
+          cache: npm
       - name: Install patch tooling (@electron/asar)
         run: npm ci
       - name: Install build tooling
-        run: sudo apt-get update && sudo apt-get install -y rpm binutils xz-utils curl zsync
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends rpm binutils xz-utils curl zsync
+      - name: Fetch + verify + patch the official .deb once (shared by all formats)
+        run: bash scripts/fetch-deb.sh "$ARCH" payload
       - name: Build RPM / tarball / AppImage / deb / Arch
+        env:
+          PAYLOAD_DIR: ${{ github.workspace }}/payload
         run: |
+          # rpm/tarball/appimage/deb all reuse the payload fetched above (via
+          # PAYLOAD_DIR) instead of each re-fetching + re-patching the official
+          # .deb - one fetch+patch per arch instead of four.
           bash scripts/build-rpm.sh      "$ARCH" dist
           bash scripts/build-tarball.sh  "$ARCH" dist
           bash scripts/build-appimage.sh "$ARCH" dist
@@ -120,7 +128,7 @@ jobs:
         with:
           path: artifacts
       - name: Install signing / repo tooling
-        run: sudo apt-get update && sudo apt-get install -y rpm gnupg createrepo-c dpkg-dev apt-utils
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends rpm gnupg createrepo-c dpkg-dev apt-utils
       - name: Collect assets
         run: |
           mkdir -p dist

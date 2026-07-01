@@ -3,6 +3,9 @@
 #
 # Usage: build-rpm.sh <amd64|arm64> [out-dir]
 # Requires: rpmbuild, curl, tar, xz, ar (binutils), coreutils.
+# If PAYLOAD_DIR is set, it must already contain a fetch-deb.sh output (claude.deb
+# + payload/ + version) and is used as-is instead of fetching/patching again -
+# lets a caller building several formats share one fetch+patch across all of them.
 set -euo pipefail
 
 DEB_ARCH="${1:?usage: build-rpm.sh <amd64|arm64> [out-dir]}"
@@ -19,9 +22,14 @@ esac
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
-# 1. Fetch + verify + extract the official .deb.
-"$HERE/fetch-deb.sh" "$DEB_ARCH" "$WORK"
-VERSION="$(cat "$WORK/version")"
+# 1. Fetch + verify + extract the official .deb, unless a caller already did
+#    this once and points us at the result via PAYLOAD_DIR (avoids re-fetching
+#    and re-patching the same payload once per output format).
+FETCHED="${PAYLOAD_DIR:-$WORK}"
+if [ -z "${PAYLOAD_DIR:-}" ]; then
+  "$HERE/fetch-deb.sh" "$DEB_ARCH" "$FETCHED"
+fi
+VERSION="$(cat "$FETCHED/version")"
 PKGREL="${PKGREL:-0}"
 
 # 2. Build the RPM with rpmbuild (cross-arch is fine: we only package files).
@@ -33,7 +41,7 @@ rpmbuild -bb \
   --define "_topdir $RB" \
   --define "_claude_version $VERSION" \
   --define "_pkgrel $PKGREL" \
-  --define "_claude_payload $WORK/payload" \
+  --define "_claude_payload $FETCHED/payload" \
   "$ROOT/packaging/rpm/claude-desktop-repack.spec"
 
 # 3. Collect the artifact.
