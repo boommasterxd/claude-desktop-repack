@@ -8,7 +8,7 @@ with signed install repos and automatic updates.**
 [![CI](https://github.com/boommasterxd/claude-desktop-repack/actions/workflows/ci.yml/badge.svg)](https://github.com/boommasterxd/claude-desktop-repack/actions/workflows/ci.yml)
 [![Latest release](https://img.shields.io/github/v/release/boommasterxd/claude-desktop-repack?label=release&color=7c3aed)](https://github.com/boommasterxd/claude-desktop-repack/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/boommasterxd/claude-desktop-repack/total?color=7c3aed)](https://github.com/boommasterxd/claude-desktop-repack/releases)
-[![License](https://img.shields.io/github/license/boommasterxd/claude-desktop-repack)](LICENSE)
+[![License](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
 [![Install page](https://img.shields.io/badge/install-page-7c3aed)](https://boommasterxd.github.io/claude-desktop-repack/)
 
 [**Install page**](https://boommasterxd.github.io/claude-desktop-repack/) &nbsp;·&nbsp; [**Releases**](https://github.com/boommasterxd/claude-desktop-repack/releases) &nbsp;·&nbsp; [**Report a bug**](https://github.com/boommasterxd/claude-desktop-repack/issues/new)
