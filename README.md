@@ -43,6 +43,14 @@ Worth using even if an official build already runs on your distro:
 
 See [Patches](#patches) for the details on all four.
 
+> **Scope:** this ships the app **as Anthropic ships it**, plus the small
+> functional fixes above. It deliberately does **not** unlock or enable features
+> Anthropic gates off on Linux (Computer Use, extra integrations, and the like).
+> If you want those, use [**patrickjaja/claude-desktop-bin**](https://github.com/patrickjaja/claude-desktop-bin),
+> which patches many more features to life on Linux. Huge thanks to
+> [**@patrickjaja**](https://github.com/patrickjaja) for that excellent work, which
+> paved the way for this project.
+
 ---
 
 ## Install
