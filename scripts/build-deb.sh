@@ -25,6 +25,8 @@ command -v dpkg-deb >/dev/null 2>&1 || {
 WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
 "$HERE/fetch-deb.sh" "$DEB_ARCH" "$WORK"
 VERSION="$(cat "$WORK/version")"
+PKGREL="$(bash "$HERE/pkgrel.sh" "$VERSION")"
+FULLVER="${VERSION}-${PKGREL}"
 
 ROOT="$WORK/pkg"
 mkdir -p "$ROOT/DEBIAN"
@@ -39,9 +41,10 @@ tar xf "$WORK/control.tar.xz" -C "$ROOT/DEBIAN"
 # "claude-desktop" name so the two never coexist or shadow each other.
 CTRL="$ROOT/DEBIAN/control"
 sed -i 's/^Package: claude-desktop$/Package: claude-desktop-repack/' "$CTRL"
+sed -i "s/^Version: .*/Version: ${FULLVER}/" "$CTRL"
 grep -q '^Provides:' "$CTRL" || sed -i '/^Package: /a Provides: claude-desktop\nConflicts: claude-desktop\nReplaces: claude-desktop' "$CTRL"
 
 mkdir -p "$OUTDIR"
-OUT="$OUTDIR/claude-desktop-repack_${VERSION}_${DEB_ARCH}.deb"
+OUT="$OUTDIR/claude-desktop-repack_${FULLVER}_${DEB_ARCH}.deb"
 dpkg-deb --root-owner-group --build "$ROOT" "$OUT"
 echo "build-deb: wrote $OUT"

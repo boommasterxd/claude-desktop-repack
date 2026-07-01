@@ -101,3 +101,16 @@ claude-quick-entry
 The main Claude window keeps its rounded corners and shadow; only the transparent
 Quick Entry overlay is excluded. Other extensions (Unite, Blur my Shell, ...)
 have the same kind of per-`WM_CLASS` blacklist.
+
+## Maintaining
+
+- **Add a patch:** drop a module into `patches/` that exports `name`, `apply(code)`
+  and (optional) `description`. It is applied by the build, listed in the release
+  notes, and validated automatically (a non-matching patch fails the build and
+  files an issue). Nothing else to wire.
+- **Ship a packaging fix** for the same upstream version (e.g. after fixing a
+  patch): bump the number in `.pkgrel` (format `<version> <n>`) in your PR. The
+  next build publishes `v<version>-<n>` (RPM `Release`, deb revision), which
+  package managers see as an upgrade. A new upstream version resets it to 0.
+- Release notes are generated: the patch list from `patches/`, plus a changelog
+  of your commits since the previous release, grouped by conventional-commit type.

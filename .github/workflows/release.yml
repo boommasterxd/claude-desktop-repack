@@ -27,6 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.d.outputs.version }}
+      fullver: ${{ steps.d.outputs.fullver }}
       should_release: ${{ steps.d.outputs.should_release }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -41,15 +42,20 @@ jobs:
             echo "Refusing unexpected version string: $VERSION" >&2
             exit 1
           fi
+          # Our packaging revision. Bump it in .pkgrel to rebuild the same
+          # upstream version (a fix); a new upstream version resets it to 0.
+          PKGREL="$(bash scripts/pkgrel.sh "$VERSION")"
+          FULLVER="$VERSION-$PKGREL"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          # State is the existence of the release itself, not a committed file:
-          # that keeps the workflow read-only on the repo (no push to a
-          # protected branch) and impossible to desync from what is published.
-          if [ "$FORCE" != "true" ] && gh release view "v$VERSION" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "Release v$VERSION already exists, nothing to do."
+          echo "fullver=$FULLVER" >> "$GITHUB_OUTPUT"
+          # State is the existence of the release itself (keyed by version-pkgrel),
+          # so the workflow never writes back to the repo and can't desync from
+          # what is published. Bumping .pkgrel makes v<ver>-<rel> a new release.
+          if [ "$FORCE" != "true" ] && gh release view "v$FULLVER" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release v$FULLVER already exists, nothing to do."
             echo "should_release=false" >> "$GITHUB_OUTPUT"
           else
-            echo "Will build and release v$VERSION."
+            echo "Will build and release v$FULLVER."
             echo "should_release=true" >> "$GITHUB_OUTPUT"
           fi
 
@@ -90,6 +96,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0   # full history + tags, for the grouped changelog
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -112,11 +120,17 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           V: ${{ needs.detect.outputs.version }}
+          FULLVER: ${{ needs.detect.outputs.fullver }}
         run: |
+          # Notes = rendered template (version + patch list) followed by a grouped
+          # changelog of our commits since the previous release.
           node scripts/render-notes.mjs "$V" "$GITHUB_REPOSITORY" > NOTES.md
-          gh release create "v$V" dist/* --title "Claude Desktop $V" --notes-file NOTES.md \
-            || { gh release edit "v$V" --title "Claude Desktop $V" --notes-file NOTES.md; \
-                 gh release upload "v$V" dist/* --clobber; }
+          PREV="$(gh release list -R "$GITHUB_REPOSITORY" -L 1 --json tagName -q '.[0].tagName' 2>/dev/null || true)"
+          RANGE=""; [ -n "$PREV" ] && RANGE="$PREV..HEAD"
+          { echo; node scripts/changelog.mjs "$RANGE"; } >> NOTES.md
+          gh release create "v$FULLVER" dist/* --title "Claude Desktop $FULLVER" --notes-file NOTES.md \
+            || { gh release edit "v$FULLVER" --title "Claude Desktop $FULLVER" --notes-file NOTES.md; \
+                 gh release upload "v$FULLVER" dist/* --clobber; }
 
   notify-failure:
     needs: [detect, build, release]
