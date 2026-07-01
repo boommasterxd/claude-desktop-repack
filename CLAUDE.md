@@ -8,9 +8,10 @@ of the app never sees any of it, only Anthropic's own untouched UI strings.
 
 It repackages Anthropic's **official** Claude Desktop Linux build (shipped only as
 a `.deb` for Debian/Ubuntu) into the formats it is not offered in: **RPM**, **.deb**
-(rebuilt), **tarball**, and **AppImage** (`+ .zsync`), for x86_64 and aarch64. It
-applies two small GNOME-Wayland patches to the app's `app.asar`; otherwise the app
-is a faithful repackage. The Electron binary and native modules are never touched.
+(rebuilt), **tarball**, **AppImage** (`+ .zsync`), an **Arch** `.pkg.tar.zst`, and a
+**Nix** flake, for x86_64 and aarch64. It applies a few small patches to the app's
+`app.asar` (two GNOME-Wayland Quick Entry fixes + two Cowork cross-distro fixes);
+otherwise the app is a faithful repackage. The Electron binary is never touched.
 
 A scheduled GitHub Action watches upstream and publishes a signed GitHub Release
 for each new version. Distribution is **GitHub Releases only** (no AUR, no apt/dnf
@@ -36,7 +37,8 @@ One workflow, four jobs:
    upstream version from Anthropic's apt index (`scripts/detect-version.sh`),
    derives the packaging revision (`pkgrel`), and decides whether to build.
 2. **build** (matrix `amd64` / `arm64`): fetches + SHA256-verifies the official
-   `.deb`, patches it, and builds all four formats. Uploads them as artifacts.
+   `.deb`, patches it, and builds all packaged formats (RPM, deb, tarball,
+   AppImage, Arch). Uploads them as artifacts. (Nix is a repo flake, not a CI build.)
 3. **release**: collects the artifacts, signs them, renders the notes, and
    publishes/updates the GitHub Release `v<fullver>`.
 4. **notify-failure** (`if: failure()`): opens a GitHub issue with the failing
@@ -113,8 +115,9 @@ RELEASE-PUBKEY.asc    public half of the signing key
 
 ## Patches
 
-The two patches live in `patches/` and restore GNOME-Wayland behaviour the
-official build lacks (on X11 and other compositors upstream is already fine). Each
+The patches live in `patches/` and restore Linux behaviour the official build
+lacks: two GNOME-Wayland Quick Entry fixes (on X11 upstream is already fine) plus
+two Cowork cross-distro fixes (firmware paths, install hint). Each
 module exports `name`, `apply(code) -> code`, and `description`. `patches/index.mjs`
 `readdir`s the folder, imports every `*.mjs` except itself, and throws if a module
 lacks `name`+`apply`. See `README.md` (Patches section) for the user-facing story.

@@ -5,7 +5,7 @@
 # Usage:
 #   scripts/build-local.sh [arch] [format ...]
 #     arch     amd64 (default) | arm64
-#     format   any of: rpm tarball appimage   (default: all)
+#     format   any of: rpm deb tarball appimage arch   (default: rpm tarball appimage)
 #
 # Examples:
 #   scripts/build-local.sh                 # all formats, amd64
@@ -17,7 +17,9 @@
 #
 # Tooling: rpmbuild (rpm-build), ar (binutils), tar, xz, curl. appimagetool is
 # downloaded on demand; zsyncmake (zsync) is only needed for the .zsync delta
-# file, which is skipped locally anyway (no update info outside CI).
+# file, which is skipped locally anyway (no update info outside CI). The `deb`
+# format additionally needs dpkg-deb; `arch` needs docker (runs makepkg in an
+# archlinux container).
 set -euo pipefail
 
 ARCH="${1:-amd64}"
@@ -35,7 +37,8 @@ for fmt in "${FORMATS[@]}"; do
     tarball)  bash "$HERE/build-tarball.sh"  "$ARCH" "$OUT" ;;
     appimage) bash "$HERE/build-appimage.sh" "$ARCH" "$OUT" ;;
     deb)      bash "$HERE/build-deb.sh"      "$ARCH" "$OUT" ;;
-    *) echo "build-local: unknown format '$fmt' (use rpm|tarball|appimage|deb)" >&2; exit 1 ;;
+    arch)     bash "$HERE/build-arch.sh"     "$ARCH" "$OUT" ;;
+    *) echo "build-local: unknown format '$fmt' (use rpm|deb|tarball|appimage|arch)" >&2; exit 1 ;;
   esac
 done
 
