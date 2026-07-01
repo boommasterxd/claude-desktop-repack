@@ -50,4 +50,4 @@ metadata_expire=6h
 EOF
 
 echo "build-rpm-repo: wrote $RPMDIR (repodata + .repo), packages point at the release"
-echo "  install: sudo dnf config-manager --add-repo ${PAGES_URL}/rpm/claude-desktop-repack.repo"
+echo "  install: sudo curl -fsSL -o /etc/yum.repos.d/claude-desktop-repack.repo ${PAGES_URL}/rpm/claude-desktop-repack.repo && sudo dnf install claude-desktop-repack"
