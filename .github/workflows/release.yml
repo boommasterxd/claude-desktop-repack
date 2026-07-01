@@ -119,8 +119,8 @@ jobs:
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: artifacts
-      - name: Install signing tooling
-        run: sudo apt-get update && sudo apt-get install -y rpm gnupg
+      - name: Install signing / repo tooling
+        run: sudo apt-get update && sudo apt-get install -y rpm gnupg createrepo-c
       - name: Collect assets
         run: |
           mkdir -p dist
@@ -153,6 +153,19 @@ jobs:
           gh release create "v$FULLVER" dist/* --title "Claude Desktop $FULLVER" --notes-file NOTES.md \
             || { gh release edit "v$FULLVER" --title "Claude Desktop $FULLVER" --notes-file NOTES.md; \
                  gh release upload "v$FULLVER" dist/* --clobber; }
+      - name: Build Pages site (dnf install repo + landing)
+        env:
+          V: ${{ needs.detect.outputs.version }}
+          PKGREL: ${{ needs.detect.outputs.pkgrel }}
+        run: |
+          # sign-artifacts.sh already imported the GPG key; grab its id so the dnf
+          # repo metadata is signed too (empty if no key -> unsigned repo).
+          export GPG_KEY_ID="$(gpg --list-secret-keys --with-colons | awk -F: '$1=="fpr"{print $10; exit}')"
+          bash scripts/build-pages-site.sh dist "$V" "$PKGREL" "$GITHUB_REPOSITORY" site
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: site
       - name: Delete build artifacts (now published on the release)
         # The dist-* artifacts were only needed to hand files from build to release.
         # They're on the GitHub Release now (free, permanent), so drop the workflow
@@ -160,7 +173,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          for id in $(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts" -q '.artifacts[].id'); do
+          # Only the dist-* build artifacts; keep the github-pages artifact for deploy.
+          for id in $(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts" -q '.artifacts[] | select(.name|startswith("dist-")) | .id'); do
             gh api -X DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$id" && echo "deleted artifact $id"
           done
       - name: Bump Nix flake pin (release-coupled)
@@ -287,3 +301,19 @@ jobs:
             gh issue create -R "$REPO" --title "CI failure: release workflow" \
               --label ci-failure --body-file body.md
           fi
+
+  # Publish the install-repo metadata + landing page to GitHub Pages (the site
+  # artifact was uploaded by the release job). Packages stay on the release.
+  deploy-pages:
+    needs: [detect, release]
+    if: needs.detect.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
