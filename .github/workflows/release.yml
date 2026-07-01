@@ -153,14 +153,19 @@ jobs:
           gh release create "v$FULLVER" dist/* --title "Claude Desktop $FULLVER" --notes-file NOTES.md \
             || { gh release edit "v$FULLVER" --title "Claude Desktop $FULLVER" --notes-file NOTES.md; \
                  gh release upload "v$FULLVER" dist/* --clobber; }
-      - name: Build Pages site (dnf install repo + landing)
+      - name: Build Pages site (install repos + landing)
         env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           V: ${{ needs.detect.outputs.version }}
           PKGREL: ${{ needs.detect.outputs.pkgrel }}
         run: |
-          # sign-artifacts.sh already imported the GPG key; grab its id so the dnf
-          # repo metadata is signed too (empty if no key -> unsigned repo).
-          export GPG_KEY_ID="$(gpg --list-secret-keys --with-colons | awk -F: '$1=="fpr"{print $10; exit}')"
+          # sign-artifacts.sh signs in a throwaway GNUPGHOME, so import the key
+          # again here (default keyring) and pass its id so the repo metadata gets
+          # signed too. Empty GPG_KEY_ID -> unsigned repos (still valid).
+          if [ -n "$GPG_PRIVATE_KEY" ]; then
+            printf '%s\n' "$GPG_PRIVATE_KEY" | gpg --batch --import
+            export GPG_KEY_ID="$(gpg --list-secret-keys --with-colons | awk -F: '$1=="fpr"{print $10; exit}')"
+          fi
           bash scripts/build-pages-site.sh dist "$V" "$PKGREL" "$GITHUB_REPOSITORY" site
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0

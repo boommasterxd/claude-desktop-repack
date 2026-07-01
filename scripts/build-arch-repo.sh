@@ -15,7 +15,7 @@ DIST="${1:?usage: build-arch-repo.sh <dist> <site>}"
 SITE="${2:?site dir}"
 DBNAME="claude-desktop-repack"
 
-sign() { [ -n "${GPG_KEY_ID:-}" ] && gpg --batch --yes --local-user "$GPG_KEY_ID" --output "$1.sig" --detach-sign "$1"; }
+sign() { [ -n "${GPG_KEY_ID:-}" ] || return 0; gpg --batch --yes --local-user "$GPG_KEY_ID" --output "$1.sig" --detach-sign "$1"; }
 
 for pkg in "$DIST"/${DBNAME}-*.pkg.tar.zst; do
   base="$(basename "$pkg")"
