@@ -222,8 +222,15 @@ must follow this convention (it becomes the commit that lands on `main`).
 
 ### Working on the repo
 
-- `main` is protected: all changes go through a PR and the `gitleaks` check must
-  pass. Do not commit or push directly to `main`.
+- `main` is protected: all changes go through a PR and the required checks (`CI` +
+  `gitleaks`) must pass. Do not commit or push directly to `main`.
 - Do not merge PRs on the maintainer's behalf unless explicitly asked; open the PR
   and stop.
 - The release workflow is read-only on the repo (it only publishes Releases).
+- **A label-triggered Claude auto-fix routine handles failures.** When the
+  release/CI workflow fails, `notify-failure` files an issue labeled
+  `patch-failure` / `path-drift` / `ci-failure`, which triggers an automated Claude
+  run that diagnoses it, opens a fix PR, and requests review (it never merges). So
+  on a failure, do **not** open your own duplicate fix PR: diagnose to understand,
+  then wait for the routine's PR and review or recommend it. Only fix it yourself
+  if the routine does not produce a correct PR.
