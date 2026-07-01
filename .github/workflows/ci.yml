@@ -1,0 +1,45 @@
+name: CI
+
+# Validates every PR (and every push to main): applies the patches and builds all
+# package formats for amd64, so a broken patch or build script is caught before
+# merge. Deliberately does NOT upload the artifacts - building in the runner costs
+# no storage, only uploading does; the real artifacts are published by release.yml.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  CI:
+    name: CI
+    runs-on: ubuntu-latest
+    env:
+      APPIMAGE_EXTRACT_AND_RUN: '1'
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - name: Install build tooling
+        run: sudo apt-get update && sudo apt-get install -y rpm dpkg binutils xz-utils curl zsync
+      - name: Build all formats (amd64) to validate patches + builds, no upload
+        run: |
+          # Each build runs fetch-deb -> check-native-paths + patch-payload
+          # (fail-loud), so this exercises the guards, every patch, and every build
+          # script. Output stays on the ephemeral runner and is never uploaded.
+          bash scripts/build-rpm.sh      amd64 dist
+          bash scripts/build-tarball.sh  amd64 dist
+          bash scripts/build-appimage.sh amd64 dist
+          bash scripts/build-deb.sh      amd64 dist
+          bash scripts/build-arch.sh     amd64 dist
+          echo "CI: all formats built OK (not uploaded)."
