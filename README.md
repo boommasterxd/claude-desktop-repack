@@ -13,6 +13,8 @@ with signed install repos and automatic updates.**
 [![dnf](https://img.shields.io/endpoint?url=https%3A%2F%2Fboommasterxd.github.io%2Fclaude-desktop-repack%2Fbadges%2Ffedora.json)](#install)
 [![pacman](https://img.shields.io/endpoint?url=https%3A%2F%2Fboommasterxd.github.io%2Fclaude-desktop-repack%2Fbadges%2Farch.json)](#install)
 [![apt](https://img.shields.io/endpoint?url=https%3A%2F%2Fboommasterxd.github.io%2Fclaude-desktop-repack%2Fbadges%2Fdebian.json)](#install)
+[![appimage](https://img.shields.io/endpoint?url=https%3A%2F%2Fboommasterxd.github.io%2Fclaude-desktop-repack%2Fbadges%2Fappimage.json)](https://github.com/boommasterxd/claude-desktop-repack/releases/latest)
+[![tarball](https://img.shields.io/endpoint?url=https%3A%2F%2Fboommasterxd.github.io%2Fclaude-desktop-repack%2Fbadges%2Ftarball.json)](https://github.com/boommasterxd/claude-desktop-repack/releases/latest)
 
 [**Install page**](https://boommasterxd.github.io/claude-desktop-repack/) &nbsp;·&nbsp; [**Releases**](https://github.com/boommasterxd/claude-desktop-repack/releases) &nbsp;·&nbsp; [**Report a bug**](https://github.com/boommasterxd/claude-desktop-repack/issues/new)
 
