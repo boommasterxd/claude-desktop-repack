@@ -29,17 +29,17 @@ else is a faithful repackage.
 
 ## Install
 
-Easiest, with **automatic updates** (Fedora / RHEL / openSUSE):
+Easiest, with **automatic updates** via a signed repo (Fedora / RHEL / openSUSE):
 
 ```bash
 sudo dnf config-manager --add-repo https://boommasterxd.github.io/claude-desktop-repack/rpm/claude-desktop-repack.repo
 sudo dnf install claude-desktop-repack   # updates then come with `dnf upgrade`
 ```
 
+There are also signed **pacman** (Arch/Manjaro) and **apt** (Debian/Ubuntu) repos.
 The [install page](https://boommasterxd.github.io/claude-desktop-repack/) has the
-commands for every distro. The repo hosts only the (signed) metadata; the packages
-themselves are served from the release. (An Arch pacman repo and an apt repo are on
-the way; until then use the release files below.)
+one-liner for every distro. The dnf repo hosts only the metadata (packages come from
+the release); the pacman/apt repos host the packages too (latest version only).
 
 Or grab the file for your distro and architecture directly from [Releases](../../releases):
 

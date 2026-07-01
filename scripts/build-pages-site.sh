@@ -11,11 +11,17 @@ V="${2:?version}"; REL="${3:?pkgrel}"; REPO="${4:?owner/repo}"; SITE="${5:?site 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 OWNER="${REPO%%/*}"; NAME="${REPO##*/}"
 PAGES_URL="https://${OWNER}.github.io/${NAME}"
+KEY_FP="${GPG_KEY_ID:-}"
+PACMAN_SIGLEVEL="$([ -n "$KEY_FP" ] && echo Required || echo Optional)"
 
 rm -rf "$SITE"; mkdir -p "$SITE"
 
 # dnf/zypper repo (metadata only; packages point at the release).
 bash "$HERE/build-rpm-repo.sh" "$DIST" "$V" "$REL" "$REPO" "$SITE"
+# pacman repo (per-arch db + packages on Pages, signed).
+bash "$HERE/build-arch-repo.sh" "$DIST" "$SITE"
+# apt repo (pool + signed Release on Pages).
+bash "$HERE/build-apt-repo.sh" "$DIST" "$SITE"
 
 # Signing pubkey (referenced by the .repo's gpgkey=).
 cp "$HERE/../RELEASE-PUBKEY.asc" "$SITE/RELEASE-PUBKEY.asc"
@@ -43,14 +49,22 @@ sudo dnf install claude-desktop-repack</pre>
 Release; only the repo metadata is hosted here.</p>
 
 <h2>Arch / Manjaro (pacman)</h2>
-<p>Coming soon. For now install the package directly from the
-<a href="https://github.com/${REPO}/releases/latest">latest release</a>
-(<code>sudo pacman -U claude-desktop-repack-*-x86_64.pkg.tar.zst</code>).</p>
+<pre>curl -fsSL ${PAGES_URL}/RELEASE-PUBKEY.asc | sudo pacman-key --add -
+sudo pacman-key --lsign-key ${KEY_FP}
+
+# add to /etc/pacman.conf:
+[claude-desktop-repack]
+SigLevel = ${PACMAN_SIGLEVEL}
+Server = ${PAGES_URL}/arch/\$arch
+
+sudo pacman -Sy claude-desktop-repack</pre>
 
 <h2>Debian / Ubuntu (apt)</h2>
-<p>Prefer Anthropic's <a href="https://code.claude.com/docs/en/desktop-linux">official apt repo</a>
-for real <code>apt upgrade</code> updates. A rebuilt <code>.deb</code> is also on the
-<a href="https://github.com/${REPO}/releases/latest">latest release</a>.</p>
+<pre>curl -fsSL ${PAGES_URL}/RELEASE-PUBKEY.asc | gpg --dearmor | sudo tee /usr/share/keyrings/claude-desktop-repack.gpg &gt;/dev/null
+echo "deb [signed-by=/usr/share/keyrings/claude-desktop-repack.gpg] ${PAGES_URL}/deb stable main" | sudo tee /etc/apt/sources.list.d/claude-desktop-repack.list
+sudo apt update &amp;&amp; sudo apt install claude-desktop-repack</pre>
+<p>Anthropic's <a href="https://code.claude.com/docs/en/desktop-linux">official apt repo</a>
+is also a good option for Debian/Ubuntu.</p>
 
 <h2>AppImage (any distro, auto-updating)</h2>
 <p>Download the <code>.AppImage</code> from the

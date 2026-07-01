@@ -120,7 +120,7 @@ jobs:
         with:
           path: artifacts
       - name: Install signing / repo tooling
-        run: sudo apt-get update && sudo apt-get install -y rpm gnupg createrepo-c
+        run: sudo apt-get update && sudo apt-get install -y rpm gnupg createrepo-c dpkg-dev apt-utils
       - name: Collect assets
         run: |
           mkdir -p dist
