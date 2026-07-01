@@ -245,17 +245,89 @@ distro. Cosmetic and fully guarded: any failure falls back to the original strin
 Contributions are welcome. Build the packages locally into `./dist`:
 
 ```bash
-npm ci
-bash scripts/build-local.sh              # all formats, amd64
-bash scripts/build-local.sh amd64 rpm    # just one format
+npm ci                                   # once: installs @electron/asar
+bash scripts/build-local.sh              # all formats, host arch
+bash scripts/build-local.sh amd64 rpm    # just one format/arch
 ```
 
-To add or fix a patch, drop a small ES module into `patches/` that exports `name`
-and `apply(code) -> code`; it is auto-discovered, applied at build time, and
-validated (a non-matching patch fails the build). Patches should anchor on stable
-string literals and use `[\w$]+` for minified identifiers so they survive upstream
-re-minification.
+`build-deb.sh` needs `dpkg-deb` (on Fedora: `sudo dnf install dpkg`);
+`build-appimage.sh` needs `zsync`/`zsyncmake`, and on FUSE-less machines
+`APPIMAGE_EXTRACT_AND_RUN=1`. Building locally (no `GITHUB_REPOSITORY` set) skips
+the AppImage update-info and `.zsync`, which is expected.
 
-PRs target `main` (protected): use [Conventional Commit](https://www.conventionalcommits.org)
-titles (`fix(...)`, `feat(...)`, `docs: ...`), and the `CI` + `gitleaks` checks must
-pass before merge.
+### Writing a patch
+
+A patch is a small ES module in `patches/` that exports `name`, `description`, and
+`apply(code) -> code`. It is auto-discovered by `patches/index.mjs`, applied by
+`scripts/patch-payload.mjs`, then the result is run through `node --check`, so
+there is nothing else to wire up:
+
+```js
+// patches/my-fix.mjs
+export const name = "my-fix";
+export const description = "one line, shown in the release notes";
+
+export function apply(code) {
+  const pattern = /("some-stable-string-literal":)([\w$]+)/g;      // see rules below
+  const matches = [...code.matchAll(pattern)];
+  if (matches.length !== 1) {                                       // exactly one
+    throw new Error(`my-fix: expected 1 match, found ${matches.length}`);
+  }
+  const out = code.replace(pattern, (_m, key, id) => `${key}patched_${id}`);
+  if (!out.includes("patched_")) {                                 // assert result
+    throw new Error("my-fix: injection marker missing after replace");
+  }
+  return out;
+}
+```
+
+The patches run as regex over Anthropic's **minified** `index.js`, so every
+upstream release can rename every local identifier and re-shuffle the code. The
+whole difficulty is writing a match that still hits **exactly the one** spot you
+mean after a re-minify, and fails loudly the moment it no longer does. Rules that
+make that hold:
+
+- **Match exactly one occurrence.** Collect all matches (`[...code.matchAll(re)]`)
+  and `throw` unless there is exactly `1`. A pattern that quietly matches 0 (silent
+  no-op) or 2+ (patches an unrelated site) is the main way these break. Never use a
+  bare `.replace()` whose success you don't count.
+- **Never hardcode a minified name; match it with `[\w$]+`.** Minified identifiers
+  are short, unstable, and can contain `$` (e.g. `F$e`, `$S`) - bare `\w+` silently
+  fails to match those. Capture the name and reuse it in the replacement instead of
+  assuming what it is.
+- **Anchor only on things upstream is unlikely to rename.** String literals, public
+  API / property / method names (`getPrimaryDisplay`, `app_id`, socket paths),
+  enum members, error messages. Do **not** anchor on the exact expression shape,
+  variable order, or whitespace unless the structure is genuinely required for the
+  injection - that is exactly what re-minification perturbs.
+- **Keep the pattern as short and specific as possible.** Match the smallest slice
+  that uniquely identifies the site. Long literal runs of minified code are brittle;
+  a couple of stable anchors plus `[\w$]+` bridges are not. Prefer a narrow context
+  over a broad one, so you don't accidentally become non-unique on the next release.
+- **Assert your end-state after replacing.** Check the injected marker (or the
+  behaviour you guarantee) is actually present in the output and `throw` if not.
+  "The old pattern is gone" is **not** proof the new behaviour is in - those diverge
+  the instant upstream refactors. Verify the thing you added, not the absence of the
+  thing you removed.
+- **Fail loud, never guess.** On any mismatch `throw`. `patch-payload.mjs` prints
+  `PATCH-FAILURE version=<v> failed=<name>` and exits 1, which fails CI and (in the
+  release workflow) opens a per-version issue naming your patch. A broken patch is
+  never shipped silently - a loud failure is the desired outcome, not something to
+  paper over with a `try/catch` or an "already patched" shortcut.
+
+To pull the current minified bundle out of a fetched payload and iterate against
+the real code:
+
+```bash
+node -e 'const a=require("@electron/asar"); require("fs").writeFileSync("/tmp/index.js", a.extractFile("PAYLOAD/usr/lib/claude-desktop/resources/app.asar", ".vite/build/index.js"))'
+```
+
+Add a `### ...` subsection to the [Patches](#patches) section above so the change is
+documented for users.
+
+### Opening a PR
+
+PRs target `main`, which is protected: the `CI` and `gitleaks` checks must pass
+before merge. Use [Conventional Commit](https://www.conventionalcommits.org) titles
+(`fix(patches): ...`, `feat: ...`, `docs: ...`) - PRs are squash-merged, so the PR
+title becomes the commit on `main` and drives the grouped release-notes changelog.
