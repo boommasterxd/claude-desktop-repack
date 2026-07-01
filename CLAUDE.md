@@ -98,6 +98,7 @@ scripts/
   sign-artifacts.sh   RPM signature + SHA256SUMS.txt(.asc)
   render-notes.mjs    fills packaging/release-notes.md.tmpl
   render-pkgbuild.sh  fills packaging/arch/PKGBUILD.in for the release-attached PKGBUILD
+  bump-nix-pin.sh     opens a PR bumping packaging/nix/package.nix on a new upstream version
   changelog.mjs       grouped conventional-commit changelog for a git range
 packaging/
   rpm/claude-desktop-repack.spec    the RPM spec (Release: %{_pkgrel}%{?dist})
