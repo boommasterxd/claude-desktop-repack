@@ -25,9 +25,13 @@ for pkg in "$DIST"/${DBNAME}-*.pkg.tar.zst; do
   cp "$pkg" "$OUT/"
   ( cd "$OUT" && sign "$base" )
 
+  # docker -v requires an absolute host path; a relative one (e.g. "site/arch/…")
+  # is parsed as a named-volume name instead, which rejects the slashes in it.
+  OUT_ABS="$(cd "$OUT" && pwd)"
+
   # Build the per-arch db with repo-add (archlinux container). chown back so the
   # host can read/clean the root-created files.
-  docker run --rm -e HU="$(id -u)" -e HG="$(id -g)" -v "$OUT":/w -w /w archlinux:latest bash -c "
+  docker run --rm -e HU="$(id -u)" -e HG="$(id -g)" -v "$OUT_ABS":/w -w /w archlinux:latest bash -c "
     repo-add ${DBNAME}.db.tar.gz ${base} >/dev/null 2>&1
     # repo-add makes db.tar.gz + a symlink db -> db.tar.gz; ship the real file as .db.
     rm -f ${DBNAME}.db ${DBNAME}.files ${DBNAME}.files.tar.gz
