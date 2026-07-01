@@ -21,7 +21,7 @@ esac
 IMAGE="archlinux:latest"
 command -v docker >/dev/null 2>&1 || { echo "build-arch: docker is required" >&2; exit 1; }
 
-WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
+WORK="$(mktemp -d)"; trap 'rm -rf "$WORK" 2>/dev/null || true' EXIT
 PKGREL="${PKGREL:-0}"
 
 # 1. Reuse an already-built tarball if one is present in OUTDIR (CI builds it
@@ -51,7 +51,8 @@ sed -e "s/{{VERSION}}/$VERSION/g" \
 
 # 3. Build with makepkg (as a non-root user; base-devel provides fakeroot).
 #    --nodeps: package() only copies files, no build/runtime deps needed here.
-docker run --rm -e TARGET_CARCH="$CARCH" -v "$BUILD":/build "$IMAGE" bash -c '
+docker run --rm -e TARGET_CARCH="$CARCH" -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" \
+    -v "$BUILD":/build "$IMAGE" bash -c '
   set -e
   pacman -Sy --noconfirm --needed archlinux-keyring >/dev/null 2>&1 || true
   pacman -S  --noconfirm --needed base-devel >/dev/null 2>&1
@@ -61,6 +62,9 @@ docker run --rm -e TARGET_CARCH="$CARCH" -v "$BUILD":/build "$IMAGE" bash -c '
   useradd -m builder 2>/dev/null || true
   chown -R builder:builder /build
   su builder -c "cd /build && makepkg -f --nodeps --noconfirm --skipinteg"
+  # Hand the build dir back to the host user: files created in-container are
+  # owned by a uid the host runner cannot delete, which would fail its cleanup.
+  chown -R "$HOST_UID:$HOST_GID" /build
 '
 
 # 4. Collect the package.
