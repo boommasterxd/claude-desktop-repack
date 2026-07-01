@@ -45,15 +45,15 @@
 
 let
   version = "1.17377.1";
-  pkgrel = "0";
+  pkgrel = "1";
   tarballs = {
     x86_64-linux = {
       suffix = "linux";
-      sha256 = "3f75b570efd42f45f934b0251950a899f6507e03132f1571f9e4ffcbf02c11f6";
+      sha256 = "86b19092192183b91ee20ae2253be004985e779fa7d86fc29151b12be1329673";
     };
     aarch64-linux = {
       suffix = "linux-aarch64";
-      sha256 = "017b29a51a02541b34be328cfaf7089caaaf07989f99cc300038710f330f596b";
+      sha256 = "a41f4b84cb1b6831f555eb606356b93f825a35156895be34f244a368721e80c7";
     };
   };
   t = tarballs.${stdenv.hostPlatform.system}
