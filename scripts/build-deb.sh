@@ -7,6 +7,9 @@
 #
 # Usage: build-deb.sh <amd64|arm64> [out-dir]
 # Requires: dpkg-deb (Debian/Ubuntu: package 'dpkg'; Fedora: 'dnf install dpkg').
+# If PAYLOAD_DIR is set, it must already contain a fetch-deb.sh output (claude.deb
+# + payload/ + version) and is used as-is instead of fetching/patching again -
+# lets a caller building several formats share one fetch+patch across all of them.
 set -euo pipefail
 
 DEB_ARCH="${1:?usage: build-deb.sh <amd64|arm64> [out-dir]}"
@@ -23,17 +26,23 @@ command -v dpkg-deb >/dev/null 2>&1 || {
 }
 
 WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
-"$HERE/fetch-deb.sh" "$DEB_ARCH" "$WORK"
-VERSION="$(cat "$WORK/version")"
+# Fetch + verify + extract the official .deb, unless a caller already did this
+# once and points us at the result via PAYLOAD_DIR (avoids re-fetching and
+# re-patching the same payload once per output format).
+FETCHED="${PAYLOAD_DIR:-$WORK}"
+if [ -z "${PAYLOAD_DIR:-}" ]; then
+  "$HERE/fetch-deb.sh" "$DEB_ARCH" "$FETCHED"
+fi
+VERSION="$(cat "$FETCHED/version")"
 PKGREL="${PKGREL:-0}"
 FULLVER="${VERSION}-${PKGREL}"
 
 ROOT="$WORK/pkg"
 mkdir -p "$ROOT/DEBIAN"
-cp -a "$WORK/payload/usr" "$ROOT/usr"
+cp -a "$FETCHED/payload/usr" "$ROOT/usr"
 
 # Pull control + maintainer scripts (./control ./postinst ./postrm) from upstream.
-( cd "$WORK" && ar x claude.deb control.tar.xz )
+( cd "$WORK" && ar x "$FETCHED/claude.deb" control.tar.xz )
 tar xf "$WORK/control.tar.xz" -C "$ROOT/DEBIAN"
 
 # Rename the package to claude-desktop-repack (apt/dpkg shows it as ours) while

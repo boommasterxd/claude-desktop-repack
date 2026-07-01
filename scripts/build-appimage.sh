@@ -9,6 +9,9 @@
 #
 # Requires: curl, tar, xz, ar (binutils), zsyncmake (zsync). appimagetool is
 # downloaded if missing. Set APPIMAGE_EXTRACT_AND_RUN=1 on FUSE-less CI runners.
+# If PAYLOAD_DIR is set, it must already contain a fetch-deb.sh output (claude.deb
+# + payload/ + version) and is used as-is instead of fetching/patching again -
+# lets a caller building several formats share one fetch+patch across all of them.
 set -euo pipefail
 
 DEB_ARCH="${1:?usage: build-appimage.sh <amd64|arm64> [out-dir]}"
@@ -24,14 +27,20 @@ case "$DEB_ARCH" in
 esac
 
 WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
-"$HERE/fetch-deb.sh" "$DEB_ARCH" "$WORK"
-VERSION="$(cat "$WORK/version")"
+# Fetch + verify + extract the official .deb, unless a caller already did this
+# once and points us at the result via PAYLOAD_DIR (avoids re-fetching and
+# re-patching the same payload once per output format).
+FETCHED="${PAYLOAD_DIR:-$WORK}"
+if [ -z "${PAYLOAD_DIR:-}" ]; then
+  "$HERE/fetch-deb.sh" "$DEB_ARCH" "$FETCHED"
+fi
+VERSION="$(cat "$FETCHED/version")"
 PKGREL="${PKGREL:-0}"
 FULLVER="${VERSION}-${PKGREL}"
 
 APPDIR="$WORK/AppDir"
 mkdir -p "$APPDIR"
-cp -a "$WORK/payload/usr" "$APPDIR/usr"
+cp -a "$FETCHED/payload/usr" "$APPDIR/usr"
 rm -rf "$APPDIR/usr/share/lintian"   # Debian packaging-lint metadata, meaningless off Debian
 
 # AppImages are mounted nosuid, so chrome-sandbox cannot be setuid here; run with
