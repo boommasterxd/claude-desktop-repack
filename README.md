@@ -44,12 +44,18 @@ Worth using even if an official build already runs on your distro:
 See [Patches](#patches) for the details on all four.
 
 > **Scope:** this ships the app **as Anthropic ships it**, plus the small
-> functional fixes above. It deliberately does **not** unlock or enable features
-> Anthropic gates off on Linux (Computer Use, extra integrations, and the like).
-> If you want those, use [**patrickjaja/claude-desktop-bin**](https://github.com/patrickjaja/claude-desktop-bin),
-> which patches many more features to life on Linux. Huge thanks to
-> [**@patrickjaja**](https://github.com/patrickjaja) for that excellent work, which
-> paved the way for this project.
+> functional fixes above; it deliberately does **not** unlock features Anthropic
+> gates off on Linux.
+>
+> If you want the **full experience**, definitely check out
+> [**patrickjaja/claude-desktop-bin**](https://github.com/patrickjaja/claude-desktop-bin):
+> it patches a whole set of Linux-only extras to life, including **Computer Use**,
+> **Cowork** / agentic VM workspaces, **Claude in Chrome**, **custom themes**,
+> **multiple side-by-side profiles**, **Recent Projects**, **Open in VS Code /
+> Cursor / Zed**, Hardware Buddy, Dispatch and more.
+>
+> Huge thanks to [**@patrickjaja**](https://github.com/patrickjaja) for that
+> excellent work, which paved the way for this project. Go give it a look and a star.
 
 ---
 
