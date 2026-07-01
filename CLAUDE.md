@@ -90,15 +90,18 @@ scripts/
   check-native-paths.mjs  fail if a new, unreviewed absolute system path appears
   patch-payload.mjs   unpack asar -> apply patches -> node --check -> repack
   build-rpm.sh        \
-  build-deb.sh         }  one format each; all honour $PKGREL and $ARCH
-  build-tarball.sh     }
-  build-appimage.sh   /
-  build-local.sh      local wrapper around the four build scripts
+  build-deb.sh         |  one format each; all honour $PKGREL and $ARCH
+  build-tarball.sh     |  build-arch.sh builds .pkg.tar.zst via makepkg in an
+  build-appimage.sh    |  archlinux container (reuses the tarball; aarch64 via
+  build-arch.sh       /   CARCH override, no qemu)
+  build-local.sh      local wrapper around the format build scripts
   sign-artifacts.sh   RPM signature + SHA256SUMS.txt(.asc)
   render-notes.mjs    fills packaging/release-notes.md.tmpl
+  render-pkgbuild.sh  fills packaging/arch/PKGBUILD.in for the release-attached PKGBUILD
   changelog.mjs       grouped conventional-commit changelog for a git range
 packaging/
   rpm/claude-desktop-repack.spec    the RPM spec (Release: %{_pkgrel}%{?dist})
+  arch/PKGBUILD.in + *.install      Arch PKGBUILD template + install scriptlet
   launcher/claude-desktop-hotkey    Quick Entry hotkey helper (socket poker)
   release-notes.md.tmpl             notes template (__VERSION__ __REPO__ __PATCHES__)
 RELEASE-PUBKEY.asc    public half of the signing key

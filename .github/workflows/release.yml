@@ -89,12 +89,15 @@ jobs:
         run: npm ci
       - name: Install build tooling
         run: sudo apt-get update && sudo apt-get install -y rpm binutils xz-utils curl zsync
-      - name: Build RPM / tarball / AppImage / deb
+      - name: Build RPM / tarball / AppImage / deb / Arch
         run: |
           bash scripts/build-rpm.sh      "$ARCH" dist
           bash scripts/build-tarball.sh  "$ARCH" dist
           bash scripts/build-appimage.sh "$ARCH" dist
           bash scripts/build-deb.sh      "$ARCH" dist
+          # Arch .pkg.tar.zst via makepkg in an archlinux container (reuses the
+          # tarball above; aarch64 built on this x86 runner via CARCH override).
+          bash scripts/build-arch.sh     "$ARCH" dist
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: dist-${{ matrix.arch }}
@@ -119,8 +122,15 @@ jobs:
       - name: Collect assets
         run: |
           mkdir -p dist
-          find artifacts -type f \( -name '*.rpm' -o -name '*.deb' -o -name '*.tar.gz' -o -name '*.AppImage' -o -name '*.zsync' \) -exec cp -v {} dist/ \;
+          find artifacts -type f \( -name '*.rpm' -o -name '*.deb' -o -name '*.tar.gz' -o -name '*.AppImage' -o -name '*.zsync' -o -name '*.pkg.tar.zst' \) -exec cp -v {} dist/ \;
           ls -lh dist
+      - name: Render Arch PKGBUILD (for makepkg users)
+        env:
+          V: ${{ needs.detect.outputs.version }}
+          PKGREL: ${{ needs.detect.outputs.pkgrel }}
+        run: |
+          bash scripts/render-pkgbuild.sh "$V" "$PKGREL" "$GITHUB_REPOSITORY" dist > dist/PKGBUILD
+          cp packaging/arch/claude-desktop-repack.install dist/
       - name: Sign artifacts (RPM + SHA256SUMS)
         env:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
