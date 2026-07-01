@@ -1,0 +1,11 @@
+{
+  "name": "claude-desktop-repack-tools",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Build-time tooling: apply the minimal GNOME-Wayland patches to the official Claude Desktop payload.",
+  "license": "GPL-3.0-only",
+  "dependencies": {
+    "@electron/asar": "4.2.0"
+  }
+}

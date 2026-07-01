@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# Entry point for claude-desktop. Normally just execs the real Electron binary,
+# but intercepts the Quick Entry helpers so `claude-desktop --toggle` works on
+# GNOME Wayland (where the app's own global hotkey is broken by
+# electron/electron#51875). The app-side socket is added by the JS patch.
+
+REAL="/usr/lib/claude-desktop/claude-desktop"
+SOCK="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/claude-desktop-qe.sock"
+ACCEL="${CLAUDE_QE_ACCEL:-<Control><Alt>space}"
+GS_ROOT="org.gnome.settings-daemon.plugins.media-keys"
+GS_KB="/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/claude-desktop-quick-entry/"
+
+toggle() {
+  # Fast path: a connection to the running app's Unix socket toggles Quick Entry
+  # in ~5-25 ms with no process spawn.
+  if [ -S "$SOCK" ]; then
+    if command -v socat >/dev/null 2>&1; then
+      socat -u OPEN:/dev/null "UNIX-CONNECT:$SOCK" >/dev/null 2>&1 && exit 0
+    fi
+    if command -v python3 >/dev/null 2>&1; then
+      python3 -c 'import socket,sys
+s=socket.socket(socket.AF_UNIX); s.settimeout(0.5); s.connect(sys.argv[1]); s.close()' "$SOCK" >/dev/null 2>&1 && exit 0
+    fi
+  fi
+  # Fallback: not running (or no socat/python) -> launch/forward with the flag;
+  # the patched app checks argv on cold start and on second-instance.
+  exec "$REAL" --toggle "$@"
+}
+
+install_hotkey() {
+  command -v gsettings >/dev/null 2>&1 || { echo "gsettings not found (GNOME only)" >&2; exit 1; }
+  local cur
+  cur=$(gsettings get "$GS_ROOT" custom-keybindings 2>/dev/null)
+  case "$cur" in
+    *"$GS_KB"*) : ;;
+    ""|"@as []"|"[]") gsettings set "$GS_ROOT" custom-keybindings "['$GS_KB']" ;;
+    *) gsettings set "$GS_ROOT" custom-keybindings "${cur%]}, '$GS_KB']" ;;
+  esac
+  gsettings set "${GS_ROOT}.custom-keybinding:${GS_KB}" name 'Claude Quick Entry'
+  gsettings set "${GS_ROOT}.custom-keybinding:${GS_KB}" command 'claude-desktop --toggle'
+  gsettings set "${GS_ROOT}.custom-keybinding:${GS_KB}" binding "$ACCEL"
+  echo "Installed GNOME hotkey: $ACCEL -> claude-desktop --toggle"
+  exit 0
+}
+
+uninstall_hotkey() {
+  command -v gsettings >/dev/null 2>&1 || exit 0
+  local cur
+  cur=$(gsettings get "$GS_ROOT" custom-keybindings 2>/dev/null)
+  case "$cur" in *"$GS_KB"*)
+    gsettings reset-recursively "${GS_ROOT}.custom-keybinding:${GS_KB}" 2>/dev/null || true
+    gsettings set "$GS_ROOT" custom-keybindings \
+      "$(printf '%s' "$cur" | sed "s#, '$GS_KB'##; s#'$GS_KB', ##; s#\['$GS_KB'\]#@as []#")"
+  ;; esac
+  echo "Removed GNOME hotkey."
+  exit 0
+}
+
+case "${1:-}" in
+  --toggle|--toggle-quick-entry)   shift; toggle "$@" ;;
+  --install-gnome-hotkey)          install_hotkey ;;
+  --uninstall-gnome-hotkey)        uninstall_hotkey ;;
+esac
+
+exec "$REAL" "$@"

@@ -6,3 +6,4 @@
 # never commit private keys
 *.SECRET.asc
 *private*.asc
+node_modules/

@@ -80,7 +80,6 @@ fi
 
 %files
 %{_bindir}/claude-desktop
-%{_bindir}/claude-quick-entry
 /usr/lib/claude-desktop/
 %{_datadir}/applications/claude-desktop.desktop
 %{_datadir}/icons/hicolor/*/apps/claude-desktop.png
