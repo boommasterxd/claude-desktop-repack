@@ -1,73 +1,135 @@
-# claude-desktop-repack
+<div align="center">
 
-Repackages Anthropic's official Claude Desktop Linux build into the formats it
-is not shipped in, so distributions Anthropic does not target can install it too.
+# Claude Desktop for Linux <sub>(repack)</sub>
 
-## Why
+**Anthropic's official Claude Desktop, repackaged for the distros they don't ship,
+with signed install repos and automatic updates.**
 
-Anthropic ships Claude Desktop for Linux only as a `.deb` for Debian/Ubuntu (via
-their apt repository). There is no native RPM, AppImage or tarball, so Fedora,
-RHEL, openSUSE and others are left out.
+[![CI](https://github.com/boommasterxd/claude-desktop-repack/actions/workflows/ci.yml/badge.svg)](https://github.com/boommasterxd/claude-desktop-repack/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/boommasterxd/claude-desktop-repack?label=release&color=7c3aed)](https://github.com/boommasterxd/claude-desktop-repack/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/boommasterxd/claude-desktop-repack/total?color=7c3aed)](https://github.com/boommasterxd/claude-desktop-repack/releases)
+[![License](https://img.shields.io/github/license/boommasterxd/claude-desktop-repack)](LICENSE)
+[![Install page](https://img.shields.io/badge/install-page-7c3aed)](https://boommasterxd.github.io/claude-desktop-repack/)
 
-This repo takes the **official `.deb`** and re-wraps it into:
+[**Install page**](https://boommasterxd.github.io/claude-desktop-repack/) &nbsp;·&nbsp; [**Releases**](https://github.com/boommasterxd/claude-desktop-repack/releases) &nbsp;·&nbsp; [**Report a bug**](https://github.com/boommasterxd/claude-desktop-repack/issues/new)
 
-- **RPM** (x86_64, aarch64) for Fedora / RHEL / openSUSE
-- **Arch package** `.pkg.tar.zst` (x86_64, aarch64) for Arch / Manjaro / EndeavourOS
-- **AppImage** + `.zsync` (x86_64, aarch64) for any glibc distro
-- **tarball** (x86_64, aarch64), generic and portable
-- **.deb** (amd64, arm64), rebuilt for parity (on Debian/Ubuntu prefer the
-  [official apt repo](https://code.claude.com/docs/en/desktop-linux) for updates)
-- **Nix flake** (x86_64, aarch64) for NixOS / the Nix package manager
+</div>
 
-A scheduled GitHub Action watches Anthropic's apt index and publishes a new
-signed GitHub Release whenever upstream releases a new version. The only change
-to the app is a few small patches (see [Patches](#patches) below); everything
-else is a faithful repackage.
+This repo takes Anthropic's **official Linux `.deb`** and re-wraps it, unmodified
+except for a few small [Linux patches](#patches), into every format the other
+distros expect, published as a **signed** GitHub Release and served from **signed
+install repos** with real `upgrade`-style updates. A scheduled GitHub Action
+rebuilds it automatically whenever Anthropic ships a new version, all verified
+against one GPG key.
 
 > Not affiliated with or endorsed by Anthropic. Source of truth:
 > <https://claude.com/download>.
 
+## Why
+
+Worth using even if an official build already runs on your distro:
+
+- **The formats Anthropic doesn't ship.** They release Linux only as a `.deb` for
+  Debian/Ubuntu, so Fedora, RHEL, openSUSE, Arch, NixOS and portable AppImage users
+  are left out. This fills every gap, with signed repos and automatic updates.
+- **GNOME-on-Wayland fixes that help everyone, including Debian/Ubuntu.** Two of the
+  patches fix bugs the *official* build has on GNOME Wayland on **any** distro: the
+  global **Quick Entry hotkey** (broken by a Chromium portal bug) works again via a
+  socket + `claude-desktop-hotkey`, and the transparent **Quick Entry overlay** gets
+  its own `WM_CLASS` so shell extensions can exclude just it without touching the
+  main window.
+- **Cowork on non-Debian distros.** Two more patches fix the VM firmware-path lookup
+  and the dependency-install hint so Cowork works on Fedora / Arch / openSUSE too.
+
+See [Patches](#patches) for the details on all four.
+
+---
+
 ## Install
 
-Easiest, with **automatic updates** via a signed repo (Fedora / RHEL / openSUSE):
+The recommended way is a **signed repo with automatic updates**. All one-liners are
+also on the [install page](https://boommasterxd.github.io/claude-desktop-repack/).
+
+### Fedora / RHEL / openSUSE <sub>(dnf / zypper)</sub>
 
 ```bash
 sudo dnf config-manager --add-repo https://boommasterxd.github.io/claude-desktop-repack/rpm/claude-desktop-repack.repo
-sudo dnf install claude-desktop-repack   # updates then come with `dnf upgrade`
+sudo dnf install claude-desktop-repack        # then: sudo dnf upgrade
 ```
 
-There are also signed **pacman** (Arch/Manjaro) and **apt** (Debian/Ubuntu) repos.
-The [install page](https://boommasterxd.github.io/claude-desktop-repack/) has the
-one-liner for every distro. The dnf repo hosts only the metadata (packages come from
-the release); the pacman/apt repos host the packages too (latest version only).
-
-Or grab the file for your distro and architecture directly from [Releases](../../releases):
+### Arch / Manjaro / EndeavourOS <sub>(pacman)</sub>
 
 ```bash
-# Fedora / RHEL / openSUSE
-sudo dnf install ./claude-desktop-repack-*.x86_64.rpm
-
-# Arch / Manjaro / EndeavourOS
-sudo pacman -U ./claude-desktop-repack-*-x86_64.pkg.tar.zst
-# (or build it yourself: download the release PKGBUILD + .install, then `makepkg -si`)
-
-# Portable (any distro)
-chmod +x claude-desktop-repack-*-x86_64.AppImage && ./claude-desktop-repack-*-x86_64.AppImage
+curl -fsSL https://boommasterxd.github.io/claude-desktop-repack/RELEASE-PUBKEY.asc | sudo pacman-key --add -
+sudo pacman-key --lsign-key 2874A3CDE4A67DD1
+# append to /etc/pacman.conf:
+#   [claude-desktop-repack]
+#   SigLevel = Required
+#   Server = https://boommasterxd.github.io/claude-desktop-repack/arch/$arch
+sudo pacman -Sy claude-desktop-repack
 ```
 
-On **Nix / NixOS** it is a flake (proprietary app, so allow unfree):
+### Debian / Ubuntu <sub>(apt)</sub>
+
+```bash
+curl -fsSL https://boommasterxd.github.io/claude-desktop-repack/RELEASE-PUBKEY.asc | gpg --dearmor | sudo tee /usr/share/keyrings/claude-desktop-repack.gpg >/dev/null
+echo "deb [signed-by=/usr/share/keyrings/claude-desktop-repack.gpg] https://boommasterxd.github.io/claude-desktop-repack/deb stable main" | sudo tee /etc/apt/sources.list.d/claude-desktop-repack.list
+sudo apt update && sudo apt install claude-desktop-repack
+```
+
+Anthropic's [official apt repo](https://code.claude.com/docs/en/desktop-linux) is
+also a fine choice on Debian/Ubuntu.
+
+### AppImage <sub>(any glibc distro, self-updating)</sub>
+
+Download the `.AppImage` from the [latest release](https://github.com/boommasterxd/claude-desktop-repack/releases/latest),
+`chmod +x`, and run it. Add it to [GearLever](https://github.com/mijorus/gearlever)
+and it updates itself via the embedded `zsync` info, downloading only the changed
+blocks, never the whole file again.
+
+### Nix / NixOS <sub>(flake)</sub>
 
 ```bash
 NIXPKGS_ALLOW_UNFREE=1 nix profile install --impure github:boommasterxd/claude-desktop-repack
-# or add to a flake: inputs.claude-desktop-repack.url = "github:boommasterxd/claude-desktop-repack";
+# or: inputs.claude-desktop-repack.url = "github:boommasterxd/claude-desktop-repack";
 ```
 
-Optional verification (each release ships `RELEASE-PUBKEY.asc` + `SHA256SUMS.txt.asc`):
+### Direct download
+
+Every format is also a plain [release asset](https://github.com/boommasterxd/claude-desktop-repack/releases/latest):
+
+```bash
+sudo dnf install ./claude-desktop-repack-*.x86_64.rpm                       # rpm
+sudo pacman -U ./claude-desktop-repack-*-x86_64.pkg.tar.zst                 # arch
+sudo apt install ./claude-desktop-repack_*_amd64.deb                        # deb
+chmod +x claude-desktop-repack-*-x86_64.AppImage && ./claude-desktop-repack-*-x86_64.AppImage
+tar xzf claude-desktop-repack-*-linux.tar.gz && ./claude-desktop-repack-*/claude-desktop
+```
+
+## Verify
+
+Every release ships `RELEASE-PUBKEY.asc` + `SHA256SUMS.txt.asc`; the rpm packages
+and all repo metadata are GPG-signed with the same key.
 
 ```bash
 gpg --import RELEASE-PUBKEY.asc
 gpg --verify SHA256SUMS.txt.asc SHA256SUMS.txt && sha256sum -c SHA256SUMS.txt
 ```
+
+## What it repackages
+
+| Format | Arches | For |
+|--------|--------|-----|
+| **RPM** + dnf repo | x86_64, aarch64 | Fedora / RHEL / openSUSE |
+| **pacman** `.pkg.tar.zst` + repo | x86_64, aarch64 | Arch / Manjaro / EndeavourOS |
+| **.deb** + apt repo | amd64, arm64 | Debian / Ubuntu |
+| **AppImage** + `.zsync` | x86_64, aarch64 | any glibc distro |
+| **tarball** | x86_64, aarch64 | generic / portable |
+| **Nix flake** | x86_64, aarch64 | NixOS / Nix |
+
+Package name: `claude-desktop-repack` (so `dnf`/`apt`/`pacman` show it as ours);
+app identity (binary, `.desktop`, icon, WM_CLASS, `claude://` handler) stays
+`claude-desktop`, indistinguishable from the official build.
 
 ## Patches
 
@@ -163,7 +225,7 @@ command. Upstream hard-codes the Debian one (`sudo apt install ...` with Debian
 package names), which is wrong on other distros. This patch wraps it in a tiny
 runtime translator: on Debian/Ubuntu it is returned unchanged, otherwise the first
 of `dnf`/`pacman`/`zypper` found rewrites the manager and package names for that
-distro. Cosmetic and fully guarded - any failure falls back to the original string.
+distro. Cosmetic and fully guarded: any failure falls back to the original string.
 
 ## Maintaining
 
@@ -185,3 +247,5 @@ distro. Cosmetic and fully guarded - any failure falls back to the original stri
   edit.
 - Release notes are generated: the patch list from `patches/`, plus a changelog
   of your commits since the previous release, grouped by conventional-commit type.
+
+See [CLAUDE.md](CLAUDE.md) for the full pipeline, conventions and internals.
