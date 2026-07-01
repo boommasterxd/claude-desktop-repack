@@ -1,9 +1,9 @@
 name: Repackage and release
 
 # Watches Anthropic's official apt repo and, when a new Claude Desktop version
-# appears, repackages the official .deb into RPM / tarball / AppImage and
-# publishes a GitHub Release. Applies two minimal GNOME-Wayland patches to the
-# app.asar, otherwise a faithful repackage.
+# appears, repackages the official .deb into RPM / deb / tarball / AppImage / Arch
+# and publishes a GitHub Release (the Nix flake tracks it via a bump PR). Applies
+# a few small Linux patches to the app.asar, otherwise a faithful repackage.
 on:
   schedule:
     - cron: '17 */3 * * *'   # every 3 hours

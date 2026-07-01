@@ -118,7 +118,7 @@ stdenv.mkDerivation (finalAttrs: {
   '';
 
   meta = {
-    description = "Claude Desktop for Linux, repackaged from the official .deb";
+    description = "Claude Desktop for Linux, repackaged from Anthropic's official Linux build";
     homepage = "https://github.com/boommasterxd/claude-desktop-repack";
     license = lib.licenses.unfree;
     platforms = [ "x86_64-linux" "aarch64-linux" ];
