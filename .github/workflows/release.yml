@@ -70,7 +70,10 @@ jobs:
           echo "fullver=$FULLVER" >> "$GITHUB_OUTPUT"
           echo "should_release=$SHOULD" >> "$GITHUB_OUTPUT"
 
-  build:
+  # Fetch + verify + patch the official .deb once per arch. Uploaded as a
+  # short-lived artifact so the format jobs below can build in parallel off the
+  # same patched payload instead of each re-fetching + re-patching it.
+  fetch:
     needs: detect
     if: needs.detect.outputs.should_release == 'true'
     runs-on: ubuntu-latest
@@ -78,10 +81,6 @@ jobs:
       fail-fast: false
       matrix:
         arch: [amd64, arm64]
-    env:
-      ARCH: ${{ matrix.arch }}
-      PKGREL: ${{ needs.detect.outputs.pkgrel }}
-      APPIMAGE_EXTRACT_AND_RUN: '1'
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
@@ -90,32 +89,112 @@ jobs:
           cache: npm
       - name: Install patch tooling (@electron/asar)
         run: npm ci
-      - name: Install build tooling
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends rpm binutils xz-utils curl zsync
-      - name: Fetch + verify + patch the official .deb once (shared by all formats)
-        run: bash scripts/fetch-deb.sh "$ARCH" payload
-      - name: Build RPM / tarball / AppImage / deb / Arch
-        env:
-          PAYLOAD_DIR: ${{ github.workspace }}/payload
-        run: |
-          # rpm/tarball/appimage/deb all reuse the payload fetched above (via
-          # PAYLOAD_DIR) instead of each re-fetching + re-patching the official
-          # .deb - one fetch+patch per arch instead of four.
-          bash scripts/build-rpm.sh      "$ARCH" dist
-          bash scripts/build-tarball.sh  "$ARCH" dist
-          bash scripts/build-appimage.sh "$ARCH" dist
-          bash scripts/build-deb.sh      "$ARCH" dist
-          # Arch .pkg.tar.zst via makepkg in an archlinux container (reuses the
-          # tarball above; aarch64 built on this x86 runner via CARCH override).
-          bash scripts/build-arch.sh     "$ARCH" dist
+      - name: Install fetch tooling
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends binutils xz-utils curl
+      - name: Fetch + verify + patch the official .deb
+        run: bash scripts/fetch-deb.sh "${{ matrix.arch }}" payload
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: dist-${{ matrix.arch }}
+          name: payload-${{ matrix.arch }}
+          path: payload
+          retention-days: 1   # only needed by the format jobs moments later; the
+                               # release job deletes it explicitly once done too.
+
+  # rpm/tarball/appimage/deb, one job per (arch, format) combination, all running
+  # in parallel instead of the old single job building all four sequentially.
+  build-format:
+    needs: [detect, fetch]   # detect listed directly: needs.detect.outputs.* below
+                             # is only visible to jobs that depend on it directly.
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            format: rpm
+            packages: rpm
+          - arch: amd64
+            format: deb
+            packages: dpkg binutils xz-utils
+          - arch: amd64
+            format: tarball
+            packages: ""
+          - arch: amd64
+            format: appimage
+            packages: curl zsync
+          - arch: arm64
+            format: rpm
+            packages: rpm
+          - arch: arm64
+            format: deb
+            packages: dpkg binutils xz-utils
+          - arch: arm64
+            format: tarball
+            packages: ""
+          - arch: arm64
+            format: appimage
+            packages: curl zsync
+    env:
+      PKGREL: ${{ needs.detect.outputs.pkgrel }}
+      APPIMAGE_EXTRACT_AND_RUN: '1'
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Install build tooling
+        if: matrix.packages != ''
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ${{ matrix.packages }}
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: payload-${{ matrix.arch }}
+          path: payload
+      - name: Build ${{ matrix.format }} (${{ matrix.arch }})
+        env:
+          PAYLOAD_DIR: ${{ github.workspace }}/payload
+        run: bash "scripts/build-${{ matrix.format }}.sh" "${{ matrix.arch }}" dist
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dist-${{ matrix.arch }}-${{ matrix.format }}
           path: dist/*
-          retention-days: 3
+          retention-days: 1
+
+  # Arch .pkg.tar.zst via makepkg in an archlinux container, reusing the tarball
+  # build-format already produced (aarch64 built on this x86 runner via CARCH
+  # override, no qemu). Depends on the whole build-format matrix (job-level
+  # "needs" can't target a single matrix leg), not just the tarball legs.
+  build-arch-pkg:
+    needs: [detect, build-format]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
+    env:
+      PKGREL: ${{ needs.detect.outputs.pkgrel }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: dist-${{ matrix.arch }}-tarball
+          path: dist
+      - name: Compute weekly cache bucket
+        id: cachekey
+        run: echo "week=$(date -u +%G-W%V)" >> "$GITHUB_OUTPUT"
+      - name: Cache pacman packages (archlinux base-devel)
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: pacman-cache
+          key: pacman-${{ matrix.arch }}-${{ steps.cachekey.outputs.week }}
+      - name: Build Arch package
+        env:
+          PACMAN_CACHE_DIR: ${{ github.workspace }}/pacman-cache
+        run: bash scripts/build-arch.sh "${{ matrix.arch }}" dist
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dist-${{ matrix.arch }}-arch
+          path: dist/*.pkg.tar.zst
+          retention-days: 1
 
   release:
-    needs: [detect, build]
+    needs: [detect, build-format, build-arch-pkg]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -126,7 +205,9 @@ jobs:
           node-version: '24'
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          path: artifacts
+          pattern: dist-*        # not payload-*: that still holds the unpatched
+          path: artifacts         # upstream claude.deb, which must never land in dist/
+          merge-multiple: true
       - name: Install signing / repo tooling
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends rpm gnupg createrepo-c dpkg-dev apt-utils
       - name: Collect assets
@@ -175,14 +256,17 @@ jobs:
         with:
           path: site
       - name: Delete build artifacts (now published on the release)
-        # The dist-* artifacts were only needed to hand files from build to release.
-        # They're on the GitHub Release now (free, permanent), so drop the workflow
+        # The dist-* artifacts were only needed to hand files from build-format /
+        # build-arch-pkg to this job, and payload-* only to hand the fetched
+        # payload from fetch to the format jobs. Both are on the GitHub Release
+        # (dist-*) or fully consumed (payload-*) by now, so drop the workflow
         # artifacts immediately instead of waiting out retention-days.
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # Only the dist-* build artifacts; keep the github-pages artifact for deploy.
-          for id in $(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts" -q '.artifacts[] | select(.name|startswith("dist-")) | .id'); do
+          # dist-* and payload-* only; keep the github-pages artifact for deploy.
+          for id in $(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts" \
+                      -q '.artifacts[] | select(.name|startswith("dist-") or startswith("payload-")) | .id'); do
             gh api -X DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$id" && echo "deleted artifact $id"
           done
       - name: Bump Nix flake pin (release-coupled)
@@ -201,7 +285,7 @@ jobs:
         run: bash scripts/bump-nix-pin.sh "$V" "$PKGREL" dist
 
   notify-failure:
-    needs: [detect, build, release]
+    needs: [detect, fetch, build-format, build-arch-pkg, release]
     if: failure()
     runs-on: ubuntu-latest
     steps:

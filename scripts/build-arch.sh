@@ -5,6 +5,9 @@
 # Usage: build-arch.sh <amd64|arm64> [out-dir]
 # Requires: docker. For arm64, qemu-user-static/binfmt must be registered on the
 # host (CI does this via docker/setup-qemu-action).
+# If PACMAN_CACHE_DIR is set, it's bind-mounted as the container's pacman package
+# cache, so a persisted (e.g. actions/cache) directory lets base-devel restore
+# from disk instead of re-downloading every run.
 set -euo pipefail
 
 DEB_ARCH="${1:?usage: build-arch.sh <amd64|arm64> [out-dir]}"
@@ -51,8 +54,15 @@ sed -e "s/{{VERSION}}/$VERSION/g" \
 
 # 3. Build with makepkg (as a non-root user; base-devel provides fakeroot).
 #    --nodeps: package() only copies files, no build/runtime deps needed here.
+#    Optionally bind-mount a persisted pacman package cache so base-devel (~30-40
+#    packages) restores from disk across runs instead of downloading every time.
+CACHE_MOUNT=()
+if [ -n "${PACMAN_CACHE_DIR:-}" ]; then
+  mkdir -p "$PACMAN_CACHE_DIR"
+  CACHE_MOUNT=( -v "$PACMAN_CACHE_DIR:/var/cache/pacman/pkg" )
+fi
 docker run --rm -e TARGET_CARCH="$CARCH" -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" \
-    -v "$BUILD":/build "$IMAGE" bash -c '
+    -v "$BUILD":/build "${CACHE_MOUNT[@]}" "$IMAGE" bash -c '
   set -e
   pacman -Sy --noconfirm --needed archlinux-keyring >/dev/null 2>&1 || true
   pacman -S  --noconfirm --needed base-devel >/dev/null 2>&1
@@ -62,9 +72,11 @@ docker run --rm -e TARGET_CARCH="$CARCH" -e HOST_UID="$(id -u)" -e HOST_GID="$(i
   useradd -m builder 2>/dev/null || true
   chown -R builder:builder /build
   su builder -c "cd /build && makepkg -f --nodeps --noconfirm --skipinteg"
-  # Hand the build dir back to the host user: files created in-container are
-  # owned by a uid the host runner cannot delete, which would fail its cleanup.
+  # Hand the build dir (and, if mounted, the pacman cache) back to the host user:
+  # files created in-container are owned by a uid the host runner cannot delete
+  # or, for the cache, persist via actions/cache without this chown.
   chown -R "$HOST_UID:$HOST_GID" /build
+  [ -d /var/cache/pacman/pkg ] && chown -R "$HOST_UID:$HOST_GID" /var/cache/pacman/pkg || true
 '
 
 # 4. Collect the package.

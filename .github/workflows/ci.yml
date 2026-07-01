@@ -34,9 +34,18 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends rpm dpkg binutils xz-utils curl zsync
       - name: Fetch + verify + patch the official .deb once (shared by all formats)
         run: bash scripts/fetch-deb.sh amd64 payload-amd64
+      - name: Compute weekly cache bucket
+        id: cachekey
+        run: echo "week=$(date -u +%G-W%V)" >> "$GITHUB_OUTPUT"
+      - name: Cache pacman packages (archlinux base-devel, for build-arch.sh)
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: pacman-cache
+          key: pacman-amd64-${{ steps.cachekey.outputs.week }}
       - name: Build all formats (amd64) to validate patches + builds, no upload
         env:
           PAYLOAD_DIR: ${{ github.workspace }}/payload-amd64
+          PACMAN_CACHE_DIR: ${{ github.workspace }}/pacman-cache
         run: |
           # Each build (besides arch, which reuses the tarball below) reuses the
           # payload fetched above via PAYLOAD_DIR instead of re-fetching +
