@@ -41,10 +41,15 @@ test -u "$OUT/payload/usr/lib/claude-desktop/chrome-sandbox" \
 
 printf '%s\n' "$VERSION" > "$OUT/version"
 
-# Apply the two minimal GNOME-Wayland patches to the payload's app.asar (Quick
-# Entry hotkey toggle + own WM_CLASS). Needs node + node_modules (npm ci). Fails
-# loud (naming the patches) if a pattern no longer matches, so CI can open a
-# per-version issue.
+# Guard: fail the build if upstream introduced new, unreviewed absolute system
+# paths that might be Debian-specific and break non-Debian distros (like the OVMF
+# firmware paths cowork-firmware-paths fixes). Runs on the pristine asar and
+# prints NATIVE-PATH-DRIFT so CI can open a per-version issue listing them.
+node "$HERE/check-native-paths.mjs" "$OUT/payload" "$VERSION"
+
+# Apply the minimal Linux patches to the payload's app.asar (auto-discovered from
+# patches/). Needs node + node_modules (npm ci). Fails loud (naming the patches)
+# if a pattern no longer matches, so CI can open a per-version issue.
 node "$HERE/patch-payload.mjs" "$OUT/payload" "$VERSION"
 
 # Add the hotkey helper next to the upstream launcher (which stays a plain

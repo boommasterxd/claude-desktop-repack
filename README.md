@@ -136,6 +136,12 @@ Cowork work even without this patch, but Arch, arm64 and others need it. openSUS
   and (optional) `description`. It is applied by the build, listed in the release
   notes, and validated automatically (a non-matching patch fails the build and
   files an issue). Nothing else to wire.
+- **New upstream system paths:** the build scans the bundle for absolute system
+  paths and fails if one appears that is not in `baseline/system-paths.json`. A
+  new `/usr/share`, `/usr/lib`, `/usr/libexec` (etc.) path may be Debian-specific
+  and break Fedora/RHEL/Arch (like the OVMF firmware paths). Review it, then
+  allowlist benign ones (`node scripts/check-native-paths.mjs <payloadDir> --update`,
+  review the diff) or write a patch for Debian-specific ones.
 - **Ship a packaging fix** for the same upstream version (e.g. after fixing a
   patch): merge the fix, then run the workflow with **`force: true`**. It
   publishes the next revision `v<version>-<N>` (RPM `Release`, deb revision),
