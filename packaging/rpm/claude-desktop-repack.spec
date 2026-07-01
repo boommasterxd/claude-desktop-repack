@@ -80,6 +80,7 @@ fi
 
 %files
 %{_bindir}/claude-desktop
+%{_bindir}/claude-desktop-hotkey
 /usr/lib/claude-desktop/
 %{_datadir}/applications/claude-desktop.desktop
 %{_datadir}/icons/hicolor/*/apps/claude-desktop.png

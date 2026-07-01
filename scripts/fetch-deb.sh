@@ -42,12 +42,14 @@ test -u "$OUT/payload/usr/lib/claude-desktop/chrome-sandbox" \
 printf '%s\n' "$VERSION" > "$OUT/version"
 
 # Apply the two minimal GNOME-Wayland patches to the payload's app.asar (Quick
-# Entry hotkey toggle + own WM_CLASS) and swap the /usr/bin launcher so
-# `claude-desktop --toggle` / `--install-gnome-hotkey` work. Needs node +
-# node_modules (npm ci). Fails loud (naming the patches) if a pattern no longer
-# matches, so CI can open a per-version issue.
+# Entry hotkey toggle + own WM_CLASS). Needs node + node_modules (npm ci). Fails
+# loud (naming the patches) if a pattern no longer matches, so CI can open a
+# per-version issue.
 node "$HERE/patch-payload.mjs" "$OUT/payload" "$VERSION"
-rm -f "$OUT/payload/usr/bin/claude-desktop"
-install -Dm755 "$HERE/../packaging/launcher/claude-desktop" "$OUT/payload/usr/bin/claude-desktop"
+
+# Add the hotkey helper next to the upstream launcher (which stays a plain
+# symlink, untouched): a bug here can never block the app from starting.
+install -Dm755 "$HERE/../packaging/launcher/claude-desktop-hotkey" \
+  "$OUT/payload/usr/bin/claude-desktop-hotkey"
 
 echo "fetch-deb: payload ready in $OUT/payload (version $VERSION, patched)"

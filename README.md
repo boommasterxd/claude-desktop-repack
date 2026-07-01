@@ -19,9 +19,8 @@ This repo takes the **official `.deb`** and re-wraps it into:
 
 A scheduled GitHub Action watches Anthropic's apt index and publishes a new
 signed GitHub Release whenever upstream releases a new version. The only change
-to the app is two small GNOME-Wayland fixes (see
-[Quick Entry](#quick-entry-global-hotkey-on-gnome-wayland) below); everything
-else is a faithful repackage.
+to the app is two small GNOME-Wayland patches (see [Patches](#patches) below);
+everything else is a faithful repackage.
 
 > Not affiliated with or endorsed by Anthropic. Source of truth:
 > <https://claude.com/download>.
@@ -45,27 +44,60 @@ gpg --import RELEASE-PUBKEY.asc
 gpg --verify SHA256SUMS.txt.asc SHA256SUMS.txt && sha256sum -c SHA256SUMS.txt
 ```
 
-These packages carry two small GNOME-Wayland patches applied to `app.asar` at
-build time (see below). The app is otherwise unmodified.
+## Patches
 
-## Quick Entry global hotkey on GNOME Wayland
+The only changes to the app are two small patches applied to `app.asar` at build
+time by `scripts/patch-payload.mjs` (regex on the minified `index.js`). The
+Electron binary and native modules are never touched. If a patch ever stops
+matching after an upstream change, the build fails and opens an issue naming the
+patch, so a broken patch is never shipped silently.
+
+Both address gaps specific to **GNOME on Wayland**; on X11 and other compositors
+the official build already behaves correctly.
+
+### Quick Entry hotkey (`quick-entry-cli-toggle`)
 
 The official build's global Quick Entry hotkey does not work on GNOME Wayland: it
 goes through Chromium's GlobalShortcuts portal, which is broken for non-sandboxed
 apps on `xdg-desktop-portal` 1.20+ (see
 [electron/electron#51875](https://github.com/electron/electron/issues/51875)).
 
-These packages fix it: a patch exposes the app's own Quick Entry toggle over a
-Unix socket, and the `claude-desktop` launcher gains a `--toggle` command. Bind
-it to a native GNOME shortcut:
+This patch exposes the app's own Quick Entry toggle over a Unix socket. The
+packages ship a small `claude-desktop-hotkey` command next to the (untouched)
+upstream launcher; it pokes that socket to open/close Quick Entry in ~5-25 ms.
+Bind it to a native GNOME shortcut:
 
 ```bash
-claude-desktop --install-gnome-hotkey     # binds Ctrl+Alt+Space -> claude-desktop --toggle
-# custom key: CLAUDE_QE_ACCEL='<Super>space' claude-desktop --install-gnome-hotkey
-# remove:     claude-desktop --uninstall-gnome-hotkey
+claude-desktop-hotkey --install       # binds Ctrl+Alt+Space
+# custom key: CLAUDE_QE_ACCEL='<Super>space' claude-desktop-hotkey --install
+# remove:     claude-desktop-hotkey --uninstall
 ```
 
-The shortcut opens and closes Quick Entry in ~5-25 ms, bypassing the broken
-portal entirely. A second patch gives the Quick Entry window its own WM_CLASS
-(`claude-quick-entry`) so GNOME corner/shadow extensions can blacklist just that
-window without affecting the main one.
+(`claude-desktop-hotkey` is installed in `PATH` by the RPM and `.deb`. Running it
+with no arguments toggles Quick Entry; pressing the bound key does the same.)
+
+### Quick Entry window name (`quick-entry-app-id`)
+
+The Quick Entry window is a transparent, frameless overlay: only the small input
+pill is drawn, the rest of the window is transparent. GNOME extensions that add
+rounded corners and a drop shadow (**Rounded Window Corners Reborn**, Unite, ...)
+paint an opaque rounded rectangle behind *every* window. On the transparent Quick
+Entry that rectangle shows through, so instead of just the pill you see a large
+opaque box with the pill floating in its corner.
+
+Those extensions can exclude windows by `WM_CLASS` / Wayland `app_id`, but
+Electron assigns one app_id per process, so the main Claude window and the Quick
+Entry window both report `claude` and cannot be told apart, you would have to
+disable the effect on the main window too.
+
+This patch gives the Quick Entry window its **own** `WM_CLASS`,
+`claude-quick-entry`, so you can exclude just it. In **Rounded Window Corners
+Reborn**: open its settings, go to **Blacklist**, and add:
+
+```
+claude-quick-entry
+```
+
+The main Claude window keeps its rounded corners and shadow; only the transparent
+Quick Entry overlay is excluded. Other extensions (Unite, Blur my Shell, ...)
+have the same kind of per-`WM_CLASS` blacklist.
