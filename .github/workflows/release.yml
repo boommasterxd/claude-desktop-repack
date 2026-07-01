@@ -183,6 +183,28 @@ jobs:
         with:
           path: pacman-cache
           key: pacman-${{ matrix.arch }}-${{ steps.cachekey.outputs.week }}
+      - name: Cache archlinux base image
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: archlinux-image-cache
+          # Same base image regardless of target arch (CARCH is overridden
+          # inside the container, no qemu) - one shared key, not per matrix.arch.
+          key: archlinux-image-${{ steps.cachekey.outputs.week }}
+      - name: Load or pull the archlinux base image
+        # Only the pacman *packages* installed inside the container were cached
+        # before; the base image layers themselves were still pulled from Docker
+        # Hub on every run. Load it from the cache above when present, else pull
+        # once and save it so this week's later runs load instead of pulling.
+        run: |
+          mkdir -p archlinux-image-cache
+          if [ -f archlinux-image-cache/archlinux.tar ]; then
+            docker load -i archlinux-image-cache/archlinux.tar
+            echo "build-arch: loaded archlinux:latest from cache"
+          else
+            docker pull archlinux:latest
+            docker save archlinux:latest -o archlinux-image-cache/archlinux.tar
+            echo "build-arch: pulled archlinux:latest and cached it"
+          fi
       - name: Build Arch package
         env:
           PACMAN_CACHE_DIR: ${{ github.workspace }}/pacman-cache
