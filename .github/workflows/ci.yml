@@ -71,6 +71,13 @@ jobs:
       - name: Build ${{ matrix.format }} (amd64) to validate patches + build script
         env:
           PAYLOAD_DIR: ${{ github.workspace }}/payload
+          # CI never uploads or publishes anything (see header), so the AppImage's
+          # update-info + .zsync delta file (a rolling checksum over the whole
+          # ~150-200MB AppImage) would be pure wasted work here. build-appimage.sh
+          # only builds that when $GITHUB_REPOSITORY is set, which the Actions
+          # runner does automatically - override it empty, scoped to just this
+          # step (unlike checkout/download-artifact above, which do rely on it).
+          GITHUB_REPOSITORY: ''
         run: bash "scripts/build-${{ matrix.format }}.sh" amd64 dist
       # Only the tarball is needed by build-arch-pkg below; the other formats'
       # output just has to build successfully, not be kept anywhere.
@@ -101,6 +108,26 @@ jobs:
         with:
           path: pacman-cache
           key: pacman-amd64-${{ steps.cachekey.outputs.week }}
+      - name: Cache archlinux base image
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: archlinux-image-cache
+          key: archlinux-image-amd64-${{ steps.cachekey.outputs.week }}
+      - name: Load or pull the archlinux base image
+        # Only the pacman *packages* installed inside the container were cached
+        # before; the base image layers themselves were still pulled from Docker
+        # Hub on every run. Load it from the cache above when present, else pull
+        # once and save it so this week's later runs load instead of pulling.
+        run: |
+          mkdir -p archlinux-image-cache
+          if [ -f archlinux-image-cache/archlinux.tar ]; then
+            docker load -i archlinux-image-cache/archlinux.tar
+            echo "build-arch: loaded archlinux:latest from cache"
+          else
+            docker pull archlinux:latest
+            docker save archlinux:latest -o archlinux-image-cache/archlinux.tar
+            echo "build-arch: pulled archlinux:latest and cached it"
+          fi
       - name: Build Arch package (validates build-arch.sh, no upload)
         env:
           PACMAN_CACHE_DIR: ${{ github.workspace }}/pacman-cache
