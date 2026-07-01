@@ -22,12 +22,14 @@ for pkg in "$DIST"/${DBNAME}-*.pkg.tar.zst; do
   case "$base" in *-x86_64.pkg.tar.zst) CARCH=x86_64 ;; *-aarch64.pkg.tar.zst) CARCH=aarch64 ;; *) continue ;; esac
   OUT="$SITE/arch/$CARCH"
   mkdir -p "$OUT"
+  ABS_OUT="$(cd "$OUT" && pwd)"   # docker -v needs an absolute path (a relative
+                                  # one is read as a named volume, not a bind mount)
   cp "$pkg" "$OUT/"
   ( cd "$OUT" && sign "$base" )
 
   # Build the per-arch db with repo-add (archlinux container). chown back so the
   # host can read/clean the root-created files.
-  docker run --rm -e HU="$(id -u)" -e HG="$(id -g)" -v "$OUT":/w -w /w archlinux:latest bash -c "
+  docker run --rm -e HU="$(id -u)" -e HG="$(id -g)" -v "$ABS_OUT":/w -w /w archlinux:latest bash -c "
     repo-add ${DBNAME}.db.tar.gz ${base} >/dev/null 2>&1
     # repo-add makes db.tar.gz + a symlink db -> db.tar.gz; ship the real file as .db.
     rm -f ${DBNAME}.db ${DBNAME}.files ${DBNAME}.files.tar.gz
