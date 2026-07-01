@@ -93,10 +93,17 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends binutils xz-utils curl
       - name: Fetch + verify + patch the official .deb
         run: bash scripts/fetch-deb.sh "${{ matrix.arch }}" payload
+      - name: Archive payload
+        # actions/upload-artifact strips executable bits and dereferences
+        # symlinks (e.g. /usr/bin/claude-desktop -> ../lib/claude-desktop/
+        # claude-desktop becomes a non-executable regular file), which broke
+        # every packaged format. Tar it into one file so the archive format
+        # itself carries that metadata through untouched.
+        run: tar -cf payload.tar payload
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: payload-${{ matrix.arch }}
-          path: payload
+          path: payload.tar
           retention-days: 1   # only needed by the format jobs moments later; the
                                # release job deletes it explicitly once done too.
 
@@ -145,7 +152,16 @@ jobs:
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: payload-${{ matrix.arch }}
-          path: payload
+          path: .
+      - name: Unpack payload
+        # Restores the exact permissions/symlinks fetch-deb.sh produced (see
+        # the "Archive payload" step in the fetch job above).
+        run: |
+          tar -xf payload.tar
+          test -x payload/payload/usr/lib/claude-desktop/claude-desktop \
+            || { echo "unpack-payload: main binary lost its executable bit in transit" >&2; exit 1; }
+          test -L payload/payload/usr/bin/claude-desktop \
+            || { echo "unpack-payload: /usr/bin/claude-desktop is no longer a symlink (got dereferenced into a duplicate copy in transit)" >&2; exit 1; }
       - name: Build ${{ matrix.format }} (${{ matrix.arch }})
         env:
           PAYLOAD_DIR: ${{ github.workspace }}/payload
