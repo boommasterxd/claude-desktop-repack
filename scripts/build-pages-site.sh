@@ -23,9 +23,10 @@ bash "$HERE/build-arch-repo.sh" "$DIST" "$SITE"
 # apt repo (pool + signed Release on Pages).
 bash "$HERE/build-apt-repo.sh" "$DIST" "$SITE"
 
-# shields.io endpoint badges (release + per-repo version), read from the metadata
-# just built above so each reflects the version actually served by that repo.
-bash "$HERE/build-badges.sh" "$SITE" "$V" "$REL"
+# shields.io endpoint badges (release + per-repo + AppImage/tarball versions),
+# read from the metadata just built above and the artifacts in DIST, so each
+# reflects the version actually served by that channel.
+bash "$HERE/build-badges.sh" "$SITE" "$V" "$REL" "$DIST"
 
 # Signing pubkey (referenced by the .repo's gpgkey=).
 cp "$HERE/../RELEASE-PUBKEY.asc" "$SITE/RELEASE-PUBKEY.asc"
