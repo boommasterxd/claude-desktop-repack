@@ -46,14 +46,17 @@ gpg --verify SHA256SUMS.txt.asc SHA256SUMS.txt && sha256sum -c SHA256SUMS.txt
 
 ## Patches
 
-The only changes to the app are two small patches applied to `app.asar` at build
+The only changes to the app are a few small patches applied to `app.asar` at build
 time by `scripts/patch-payload.mjs` (regex on the minified `index.js`). The
 Electron binary and native modules are never touched. If a patch ever stops
 matching after an upstream change, the build fails and opens an issue naming the
 patch, so a broken patch is never shipped silently.
 
-Both address gaps specific to **GNOME on Wayland**; on X11 and other compositors
-the official build already behaves correctly.
+Two of them (`quick-entry-cli-toggle`, `quick-entry-app-id`) address gaps specific
+to **GNOME on Wayland**; on X11 and other compositors the official build already
+behaves correctly. One (`cowork-firmware-paths`) restores Cowork on non-Debian
+distros. The app itself runs unmodified everywhere; these only fill in the
+Linux/distro gaps the official Debian build leaves.
 
 ### Quick Entry hotkey (`quick-entry-cli-toggle`)
 
@@ -101,6 +104,31 @@ claude-quick-entry
 The main Claude window keeps its rounded corners and shadow; only the transparent
 Quick Entry overlay is excluded. Other extensions (Unite, Blur my Shell, ...)
 have the same kind of per-`WM_CLASS` blacklist.
+
+### Cowork VM firmware paths (`cowork-firmware-paths`)
+
+Cowork runs its agent workspace inside a QEMU/KVM VM that needs OVMF (UEFI)
+firmware and `virtiofsd`. The official Debian `.deb` hard-codes Debian-only paths
+(`/usr/share/OVMF/...`, `/usr/{libexec,bin}/virtiofsd`), so on distros that ship
+the firmware elsewhere the VM capability probe returns **unsupported** and the
+Cowork Download button stays inert.
+
+This patch appends the non-Debian search paths (Fedora/RHEL
+`/usr/share/edk2/ovmf/`, Arch `/usr/share/edk2/x64/`, plus `/usr/lib/virtiofsd`)
+to the probe's candidate lists. Debian paths are kept first, so Debian/Ubuntu
+behaviour is byte-for-byte unchanged. You still need the VM dependencies
+installed:
+
+```bash
+# Fedora / RHEL
+sudo dnf install qemu-kvm edk2-ovmf virtiofsd
+# Arch
+sudo pacman -S qemu-full edk2-ovmf virtiofsd
+```
+
+Notes: on x86_64 Fedora a compatibility symlink at `/usr/share/OVMF/` often makes
+Cowork work even without this patch, but Arch, arm64 and others need it. openSUSE
+(firmware named `*-code.bin`) needs a different VARS-file rule and is a known gap.
 
 ## Maintaining
 
