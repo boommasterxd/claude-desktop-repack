@@ -1,11 +1,15 @@
 Repackaged from Anthropic's official Claude Desktop Linux build **version
 `__VERSION__`** into RPM, AppImage, tarball and `.deb` for x86_64 and aarch64.
-The only change to the app is two small GNOME-Wayland fixes (Quick Entry hotkey
-toggle + its own WM_CLASS); everything else is faithful to upstream.
+Everything is faithful to upstream except the GNOME-Wayland patches listed below.
 
-**What changed in the app:** the build number `__VERSION__` is internal and has
-no separate entry, so see Anthropic's official release notes for the actual
-changes in the app: https://support.claude.com/en/articles/12138966-release-notes
+**Patches applied to the app** (see the
+[README](https://github.com/__REPO__#patches) for details):
+
+__PATCHES__
+
+**What changed in the app itself:** the build number `__VERSION__` is internal
+and has no separate entry, so see Anthropic's official release notes for the
+actual app changes: https://support.claude.com/en/articles/12138966-release-notes
 
 **Verify** (each RPM carries an embedded GPG signature; `SHA256SUMS.txt` is
 signed with the same key, published as `RELEASE-PUBKEY.asc`):
