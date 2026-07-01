@@ -102,8 +102,11 @@ scripts/
 packaging/
   rpm/claude-desktop-repack.spec    the RPM spec (Release: %{_pkgrel}%{?dist})
   arch/PKGBUILD.in + *.install      Arch PKGBUILD template + install scriptlet
+  nix/package.nix + apply-patches.mjs  Nix derivation (autoPatchelfs the bundled
+                                    Electron; patches the asar in-build)
   launcher/claude-desktop-hotkey    Quick Entry hotkey helper (socket poker)
   release-notes.md.tmpl             notes template (__VERSION__ __REPO__ __PATCHES__)
+flake.nix             Nix flake exposing the package for x86_64/aarch64-linux
 RELEASE-PUBKEY.asc    public half of the signing key
 ```
 
