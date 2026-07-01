@@ -107,12 +107,17 @@ jobs:
         uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
         with:
           path: pacman-cache
-          key: pacman-amd64-${{ steps.cachekey.outputs.week }}
+          # Same key as release.yml's build-arch-pkg (no arch suffix - it's the
+          # same x86_64 packages either way): whichever workflow runs first each
+          # week populates the cache for the other too, since caches are shared
+          # repo-wide, not scoped per workflow file.
+          key: pacman-${{ steps.cachekey.outputs.week }}
       - name: Cache archlinux base image
         uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
         with:
           path: archlinux-image-cache
-          key: archlinux-image-amd64-${{ steps.cachekey.outputs.week }}
+          # Same key as release.yml's build-arch-pkg, for the same reason.
+          key: archlinux-image-${{ steps.cachekey.outputs.week }}
       - name: Load or pull the archlinux base image
         # Only the pacman *packages* installed inside the container were cached
         # before; the base image layers themselves were still pulled from Docker
