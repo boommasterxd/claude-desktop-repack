@@ -17,6 +17,7 @@ This repo takes the **official `.deb`** and re-wraps it into:
 - **tarball** (x86_64, aarch64), generic and portable
 - **.deb** (amd64, arm64), rebuilt for parity (on Debian/Ubuntu prefer the
   [official apt repo](https://code.claude.com/docs/en/desktop-linux) for updates)
+- **Nix flake** (x86_64, aarch64) for NixOS / the Nix package manager
 
 A scheduled GitHub Action watches Anthropic's apt index and publishes a new
 signed GitHub Release whenever upstream releases a new version. The only change
@@ -40,6 +41,13 @@ sudo pacman -U ./claude-desktop-repack-*-x86_64.pkg.tar.zst
 
 # Portable (any distro)
 chmod +x claude-desktop-repack-*-x86_64.AppImage && ./claude-desktop-repack-*-x86_64.AppImage
+```
+
+On **Nix / NixOS** it is a flake (proprietary app, so allow unfree):
+
+```bash
+NIXPKGS_ALLOW_UNFREE=1 nix profile install --impure github:boommasterxd/claude-desktop-repack
+# or add to a flake: inputs.claude-desktop-repack.url = "github:boommasterxd/claude-desktop-repack";
 ```
 
 Optional verification (each release ships `RELEASE-PUBKEY.asc` + `SHA256SUMS.txt.asc`):
