@@ -98,13 +98,13 @@ scripts/
   sign-artifacts.sh   RPM signature + SHA256SUMS.txt(.asc)
   render-notes.mjs    fills packaging/release-notes.md.tmpl
   render-pkgbuild.sh  fills packaging/arch/PKGBUILD.in for the release-attached PKGBUILD
-  bump-nix-pin.sh     opens a PR bumping packaging/nix/package.nix on a new upstream version
+  bump-nix-pin.sh     opens (+ auto-merges) a PR bumping packaging/nix/package.nix each release
   changelog.mjs       grouped conventional-commit changelog for a git range
 packaging/
   rpm/claude-desktop-repack.spec    the RPM spec (Release: %{_pkgrel}%{?dist})
   arch/PKGBUILD.in + *.install      Arch PKGBUILD template + install scriptlet
-  nix/package.nix + apply-patches.mjs  Nix derivation (autoPatchelfs the bundled
-                                    Electron; patches the asar in-build)
+  nix/package.nix     Nix derivation (release-coupled: fetches this repo's release
+                                    tarball, autoPatchelfs the bundled Electron)
   launcher/claude-desktop-hotkey    Quick Entry hotkey helper (socket poker)
   release-notes.md.tmpl             notes template (__VERSION__ __REPO__ __PATCHES__)
 flake.nix             Nix flake exposing the package for x86_64/aarch64-linux
