@@ -160,6 +160,8 @@ jobs:
           tar -xf payload.tar
           test -x payload/payload/usr/lib/claude-desktop/claude-desktop \
             || { echo "unpack-payload: main binary lost its executable bit in transit" >&2; exit 1; }
+          test -L payload/payload/usr/bin/claude-desktop \
+            || { echo "unpack-payload: /usr/bin/claude-desktop is no longer a symlink (got dereferenced into a duplicate copy in transit)" >&2; exit 1; }
       - name: Build ${{ matrix.format }} (${{ matrix.arch }})
         env:
           PAYLOAD_DIR: ${{ github.workspace }}/payload
