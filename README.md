@@ -26,7 +26,7 @@ rebuilds it automatically whenever Anthropic ships a new version, all verified
 against one GPG key.
 
 > Not affiliated with or endorsed by Anthropic. Source of truth:
-> <https://claude.com/download>.
+> <https://claude.com/download>. See the [Disclaimer](#disclaimer) below.
 
 ## Why
 
@@ -342,3 +342,45 @@ PRs target `main`, which is protected: the `CI` and `gitleaks` checks must pass
 before merge. Use [Conventional Commit](https://www.conventionalcommits.org) titles
 (`fix(patches): ...`, `feat: ...`, `docs: ...`) - PRs are squash-merged, so the PR
 title becomes the commit on `main` and drives the grouped release-notes changelog.
+
+## Disclaimer
+
+This is an unofficial, community-maintained project. It exists purely for
+convenience and interoperability, so that Anthropic's official Linux build can be
+installed on the distributions and package formats it is not officially shipped in.
+It is **not affiliated with, endorsed by, or sponsored by Anthropic**.
+
+**What this repository contains.** Only build scripts, packaging metadata, and a
+small set of Linux compatibility patches. It does **not** contain, redistribute, or
+vendor the Claude Desktop application itself. During the build the upstream package
+is downloaded **directly from Anthropic's official distribution**, its SHA256 is
+verified against Anthropic's own apt index, and it is repackaged unmodified except
+for the documented [patches](#patches). The Electron runtime and all native modules
+are left untouched.
+
+**Proprietary software and terms.** Claude Desktop is proprietary software owned by
+Anthropic PBC. Your use of the application stays subject to Anthropic's own terms
+and policies (their Terms of Service, Usage Policy, and any applicable licenses).
+Installing it through this repackage grants you no additional rights to the
+application and does not change Anthropic's terms; if those terms and this project
+ever conflict, Anthropic's terms govern your use of the app.
+
+**Trademarks.** "Claude" and "Anthropic" are trademarks of Anthropic PBC. They are
+used here only nominatively, to identify the software this project repackages; no
+affiliation or endorsement is implied. All trademarks are the property of their
+respective owners.
+
+**Licensing.** The **GPL-3.0** license in this repository covers only the contents
+of this repository (the build scripts, packaging, and patches). It does **not**
+apply to the Claude Desktop application, which remains under Anthropic's proprietary
+license.
+
+**No warranty.** This project is provided "as is", without warranty of any kind, to
+the extent permitted by law. The maintainers are not liable for any issue arising
+from installing or running the repackaged application. Bugs in the app itself (as
+opposed to the packaging) belong to Anthropic and should be reported to them, not
+here.
+
+**Rights holders.** This project only helps Linux users install software they are
+already entitled to run. If you represent Anthropic and have any concern about
+anything in this repository, please open an issue and we will respond promptly.
