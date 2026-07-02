@@ -344,7 +344,7 @@ jobs:
         run: bash scripts/bump-nix-pin.sh "$V" "$PKGREL" dist
 
   notify-failure:
-    needs: [detect, fetch, build-format, build-arch-pkg, release]
+    needs: [detect, fetch, build-format, build-arch-pkg, release, deploy-pages]
     if: failure()
     runs-on: ubuntu-latest
     steps:
