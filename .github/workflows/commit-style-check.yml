@@ -1,0 +1,37 @@
+name: Commit Style Check
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  check-title:
+    name: Validate PR Title
+    # Dependabot PR titles never match this convention (e.g. "bump the minor-patch
+    # group"). Skip them so this required check doesn't block Dependabot auto-merge -
+    # a job skipped via `if:` still counts as passing for branch protection purposes.
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR Title
+        uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            docs
+            style
+            refactor
+            perf
+            test
+            build
+            ci
+            chore
+            revert
+          # Allows an optional scope in parentheses after the type (e.g. feat(auth): text)
+          requireScope: false
