@@ -9,6 +9,9 @@
 #
 # Usage: bump-nix-pin.sh <version> <pkgrel> <dist-dir-with-tarballs>
 # Testing: BUMP_DRY_RUN=1 edits package.nix + prints the diff, skips git/gh.
+#
+# Writes bumped=true/false to $GITHUB_OUTPUT (if set) so the caller knows
+# whether an actual bump happened, without waiting for the PR to merge.
 set -euo pipefail
 
 V="${1:?usage: bump-nix-pin.sh <version> <pkgrel> <dist-dir>}"
@@ -25,6 +28,7 @@ SHA_A64="$(sha256sum "$a64" | cut -d' ' -f1)"
 
 if grep -q "version = \"$V\";" "$PKG" && grep -q "pkgrel = \"$REL\";" "$PKG" && grep -q "$SHA_X64" "$PKG"; then
   echo "bump-nix-pin: package.nix already pinned to $V-$REL - nothing to do"
+  [ -n "${GITHUB_OUTPUT:-}" ] && echo "bumped=false" >> "$GITHUB_OUTPUT"
   exit 0
 fi
 
@@ -42,6 +46,7 @@ PY
 if [ "${BUMP_DRY_RUN:-}" = "1" ]; then
   echo "=== dry run: package.nix diff ==="
   git -C "$HERE/.." --no-pager diff -- packaging/nix/package.nix || true
+  [ -n "${GITHUB_OUTPUT:-}" ] && echo "bumped=true" >> "$GITHUB_OUTPUT"
   exit 0
 fi
 
@@ -65,3 +70,4 @@ gh pr create --base main --head "$BR" \
 # gitleaks runs, passes, and GitHub squash-merges automatically.
 gh pr merge "$BR" --auto --squash 2>/dev/null || echo "bump-nix-pin: auto-merge not armed (needs allow_auto_merge + a PR-triggering token)"
 echo "bump-nix-pin: opened/updated PR for $V-$REL"
+[ -n "${GITHUB_OUTPUT:-}" ] && echo "bumped=true" >> "$GITHUB_OUTPUT"
