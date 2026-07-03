@@ -21,7 +21,35 @@ permissions:
   contents: read
 
 jobs:
+  # Cheap gate: skip the expensive build jobs below when a push/PR only touches
+  # docs/config files that can't affect the build. Defaults to "build" whenever
+  # the diff base can't be resolved (e.g. a brand-new branch) or anything about
+  # the check itself goes wrong - always fail toward validating, never toward
+  # silently skipping it. The CI job below still runs unconditionally (if:
+  # always()), so a skip here never leaves the required check stuck pending.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      build: ${{ steps.check.outputs.build }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+      - id: check
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          build=true
+          if [ -n "$BASE" ] && git cat-file -e "$BASE" 2>/dev/null; then
+            if ! git diff --name-only "$BASE" HEAD | grep -qvE '^(.*\.md|LICENSE|\.gitignore|\.gitleaks\.toml|\.gitleaks-version)$'; then
+              build=false
+            fi
+          fi
+          echo "build=$build" >> "$GITHUB_OUTPUT"
+
   fetch:
+    needs: changes
+    if: needs.changes.outputs.build == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -75,7 +103,8 @@ jobs:
   # rpm/tarball/appimage/deb, one parallel job per format (mirrors release.yml's
   # build-format matrix), all validating against the payload fetch fetched above.
   build-format:
-    needs: fetch
+    needs: [changes, fetch]
+    if: needs.changes.outputs.build == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -133,7 +162,8 @@ jobs:
   # Arch .pkg.tar.zst via makepkg in an archlinux container, reusing the tarball
   # build-format already produced (same as build-arch.sh's local reuse path).
   build-arch-pkg:
-    needs: build-format
+    needs: [changes, build-format]
+    if: needs.changes.outputs.build == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -181,11 +211,23 @@ jobs:
 
   # Required-status-check gate: branch protection expects a check named "CI".
   # Splitting the format builds above means none of those jobs is individually
-  # named "CI" anymore, so this job exists purely to be that gate - it only runs
-  # (and succeeds) once fetch/build-format/build-arch-pkg have all succeeded.
+  # named "CI" anymore, so this job exists purely to be that gate. `if: always()`
+  # is required here: fetch/build-format/build-arch-pkg are skipped (not failed)
+  # on a docs/config-only change, and without always() this job would inherit
+  # that skip too, leaving the required check stuck "Pending" forever instead of
+  # resolving green.
   CI:
     name: CI
-    needs: [fetch, build-format, build-arch-pkg]
+    needs: [changes, fetch, build-format, build-arch-pkg]
+    if: always()
     runs-on: ubuntu-latest
     steps:
-      - run: echo "All formats built OK across parallel jobs (not uploaded)."
+      - name: Check build jobs
+        run: |
+          for r in "${{ needs.fetch.result }}" "${{ needs.build-format.result }}" "${{ needs.build-arch-pkg.result }}"; do
+            if [ "$r" != "success" ] && [ "$r" != "skipped" ]; then
+              echo "::error::a build job did not succeed: $r"
+              exit 1
+            fi
+          done
+          echo "All formats built OK across parallel jobs (not uploaded), or skipped: docs/config-only change."
