@@ -329,6 +329,7 @@ jobs:
             gh api -X DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$id" && echo "deleted artifact $id"
           done
       - name: Bump Nix flake pin (release-coupled)
+        id: nixbump
         # The Nix flake fetches this repo's release tarball, so its pin (version +
         # pkgrel + per-arch tarball sha256) must track every release - each -N
         # ships a different tarball. Open a PR bumping it (main is protected, so a
@@ -342,6 +343,25 @@ jobs:
           V: ${{ needs.detect.outputs.version }}
           PKGREL: ${{ needs.detect.outputs.pkgrel }}
         run: bash scripts/bump-nix-pin.sh "$V" "$PKGREL" dist
+      - name: Note the Nix pin bump in this release's notes
+        # The bump commit above only lands on main once its PR's auto-merge
+        # completes (after gitleaks runs), which is after this release's notes
+        # were already rendered - so changelog.mjs would otherwise pick it up on
+        # the *next* release instead of this one (changelog.mjs skips it for
+        # exactly this reason). We already know here whether a bump actually
+        # happened, so re-render this release's notes with that entry attributed
+        # correctly and update the just-published release in place.
+        if: steps.nixbump.outputs.bumped == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          V: ${{ needs.detect.outputs.version }}
+          FULLVER: ${{ needs.detect.outputs.fullver }}
+        run: |
+          node scripts/render-notes.mjs "$V" "$GITHUB_REPOSITORY" > NOTES.md
+          PREV="$(gh release list -R "$GITHUB_REPOSITORY" -L 2 --json tagName -q '.[1].tagName' 2>/dev/null || true)"
+          RANGE=""; [ -n "$PREV" ] && RANGE="$PREV..HEAD"
+          { echo; NIX_BUMP_FULLVER="$FULLVER" node scripts/changelog.mjs "$RANGE"; } >> NOTES.md
+          gh release edit "v$FULLVER" -R "$GITHUB_REPOSITORY" --notes-file NOTES.md
 
   notify-failure:
     needs: [detect, fetch, build-format, build-arch-pkg, release, deploy-pages]

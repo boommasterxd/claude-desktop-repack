@@ -4,10 +4,19 @@
 // range is empty.
 //
 // Usage: node scripts/changelog.mjs <range>   e.g. v1.17377.1-0..HEAD
+//
+// The release workflow's Nix-pin bump only lands on main once its PR's
+// auto-merge completes (after gitleaks runs) - after this release's notes are
+// already rendered - so its commit would otherwise show up misattributed to
+// the *next* release's changelog instead of this one. We skip
+// "chore(nix): bump flake pin to ..." commits here and let the workflow
+// inject a correctly-attributed entry via NIX_BUMP_FULLVER once it knows the
+// bump actually happened (see the "Note the Nix pin bump" step).
 
 import { execFileSync } from "node:child_process";
 
 const range = process.argv[2];
+const nixBumpFullver = process.env.NIX_BUMP_FULLVER || "";
 
 let raw = "";
 try {
@@ -31,10 +40,15 @@ const other = [];
 
 for (const line of raw.split("\n").filter(Boolean)) {
   const [subject, hash] = line.split("\t");
+  if (/^chore\(nix\): bump flake pin to /.test(subject)) continue;
   const m = subject.match(/^(\w+)(?:\([^)]*\))?!?:\s*(.+)$/);
   const grp = m && GROUPS.find(([, types]) => types.includes(m[1].toLowerCase()));
   if (grp) buckets.get(grp[0]).push(`- ${m[2]} (${hash})`);
   else other.push(`- ${subject} (${hash})`);
+}
+
+if (nixBumpFullver) {
+  buckets.get("Maintenance").push(`- bump Nix flake pin to ${nixBumpFullver}`);
 }
 
 const out = [];
