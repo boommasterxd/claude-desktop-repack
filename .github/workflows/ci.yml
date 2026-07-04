@@ -88,10 +88,10 @@ jobs:
         run: bash scripts/fetch-deb.sh amd64 payload
       - name: Archive payload
         # actions/upload-artifact strips executable bits and dereferences
-        # symlinks (e.g. /usr/bin/claude-desktop -> ../lib/claude-desktop/
-        # claude-desktop becomes a non-executable regular file), which broke
-        # every packaged format in release.yml. Tar it into one file so the
-        # archive format itself carries that metadata through untouched.
+        # symlinks (e.g. bundled .so sonames become non-executable duplicate
+        # regular-file copies), which broke every packaged format in
+        # release.yml. Tar it into one file so the archive format itself
+        # carries that metadata through untouched.
         if: steps.cache.outputs.cache-hit != 'true'
         run: tar -cf payload.tar payload
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -136,8 +136,8 @@ jobs:
           tar -xf payload.tar
           test -x payload/payload/usr/lib/claude-desktop/claude-desktop \
             || { echo "unpack-payload: main binary lost its executable bit in transit" >&2; exit 1; }
-          test -L payload/payload/usr/bin/claude-desktop \
-            || { echo "unpack-payload: /usr/bin/claude-desktop is no longer a symlink (got dereferenced into a duplicate copy in transit)" >&2; exit 1; }
+          test -x payload/payload/usr/bin/claude-desktop \
+            || { echo "unpack-payload: launcher lost its executable bit in transit" >&2; exit 1; }
       - name: Build ${{ matrix.format }} (amd64) to validate patches + build script
         env:
           PAYLOAD_DIR: ${{ github.workspace }}/payload
