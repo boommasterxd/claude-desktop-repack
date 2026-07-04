@@ -45,10 +45,21 @@ rm -rf "$APPDIR/usr/share/lintian"   # Debian packaging-lint metadata, meaningle
 
 # AppImages are mounted nosuid, so chrome-sandbox cannot be setuid here; run with
 # --no-sandbox (standard for portable Electron apps).
+#
+# Also honors opt-in env vars for the Electron/Ozone/Wayland GPU-process crash
+# workaround (issue #66): CLAUDE_GPU_BACKEND=angle-gl, CLAUDE_USE_XWAYLAND=1,
+# CLAUDE_DISABLE_GPU=full. See packaging/launcher/claude-desktop-launcher for
+# the equivalent used by rpm/deb/Arch.
 cat > "$APPDIR/AppRun" <<'EOF'
 #!/bin/sh
 HERE="$(dirname "$(readlink -f "$0")")"
-exec "$HERE/usr/lib/claude-desktop/claude-desktop" --no-sandbox "$@"
+FLAGS="--no-sandbox"
+case "${CLAUDE_GPU_BACKEND:-}" in
+  angle-gl) FLAGS="$FLAGS --use-gl=angle --use-angle=gl" ;;
+esac
+[ "${CLAUDE_USE_XWAYLAND:-}" = "1" ] && FLAGS="$FLAGS --ozone-platform=x11"
+[ "${CLAUDE_DISABLE_GPU:-}" = "full" ] && FLAGS="$FLAGS --disable-gpu"
+exec "$HERE/usr/lib/claude-desktop/claude-desktop" $FLAGS "$@"
 EOF
 chmod +x "$APPDIR/AppRun"
 

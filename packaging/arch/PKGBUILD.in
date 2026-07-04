@@ -33,8 +33,10 @@ package() {
   # The tarball unpacks to claude-desktop-repack-<ver>-<rel>-linux[-aarch64]/
   # containing the official .deb's usr/ tree (already patched) plus a relocatable
   # launcher we do not use here. Install the usr/ tree verbatim: it keeps the
-  # /usr/lib/claude-desktop layout, the /usr/bin/claude-desktop symlink to the
-  # real (sandboxed) Electron binary, and the claude-desktop-hotkey helper.
+  # /usr/lib/claude-desktop layout, the /usr/bin/claude-desktop launcher (execs
+  # the real, sandboxed Electron binary; see packaging/launcher/
+  # claude-desktop-launcher for its opt-in GPU-workaround env vars), and the
+  # claude-desktop-hotkey helper.
   local _dir="claude-desktop-repack-${pkgver}-${pkgrel}-linux"
   [ "$CARCH" = "aarch64" ] && _dir="${_dir}-aarch64"
   cp -a "$srcdir/$_dir/usr" "$pkgdir/usr"

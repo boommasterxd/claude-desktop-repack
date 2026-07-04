@@ -78,8 +78,10 @@ which:
 3. runs `node --check` on the patched `index.js`,
 4. repacks, keeping native `.node` modules unpacked (`unpack: "**/*.node"`).
 
-It then drops the `claude-desktop-hotkey` helper next to the **untouched** upstream
-`/usr/bin/claude-desktop` symlink. The asar-integrity fuse is a no-op on Linux
+It then drops the `claude-desktop-hotkey` helper next to `/usr/bin/claude-desktop`,
+and replaces that upstream symlink with `packaging/launcher/claude-desktop-launcher`
+(a thin `exec` wrapper that stays a no-op unless one of its GPU-workaround env
+vars is set, see README.md). The asar-integrity fuse is a no-op on Linux
 (verified: a repacked copy launches), so no fuse flip or hash re-embed is needed.
 
 ## Layout
@@ -108,6 +110,8 @@ packaging/
   nix/package.nix     Nix derivation (release-coupled: fetches this repo's release
                                     tarball, autoPatchelfs the bundled Electron)
   launcher/claude-desktop-hotkey    Quick Entry hotkey helper (socket poker)
+  launcher/claude-desktop-launcher  installed as /usr/bin/claude-desktop (rpm/deb/Arch);
+                                    opt-in GPU-workaround env vars, see README.md
   release-notes.md.tmpl             notes template (__VERSION__ __REPO__ __PATCHES__)
 flake.nix             Nix flake exposing the package for x86_64/aarch64-linux
 RELEASE-PUBKEY.asc    public half of the signing key

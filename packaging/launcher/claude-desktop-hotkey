@@ -3,8 +3,9 @@
 # GNOME Wayland GlobalShortcuts portal (electron/electron#51875). The app-side
 # socket is added by the quick-entry-cli-toggle patch.
 #
-# This is a separate helper: the upstream /usr/bin/claude-desktop launcher is
-# left completely untouched, so a bug here can never stop the app from starting.
+# This is a separate helper, independent of /usr/bin/claude-desktop's own
+# launcher logic (see claude-desktop-launcher), so a bug here can never stop
+# the app from starting.
 #
 #   claude-desktop-hotkey              toggle Quick Entry (open/close)
 #   claude-desktop-hotkey --install    bind a GNOME shortcut to this command
@@ -26,8 +27,9 @@ toggle() {
 s=socket.socket(socket.AF_UNIX); s.settimeout(0.5); s.connect(sys.argv[1]); s.close()' "$SOCK" >/dev/null 2>&1 && exit 0
     fi
   fi
-  # Not running (or no socat/python): let the app handle --toggle in argv via its
-  # cold-start / second-instance check. Uses the untouched upstream launcher.
+  # Not running (or no socat/python): let the app handle --toggle in argv via
+  # its cold-start / second-instance check. Goes through claude-desktop-
+  # launcher like any normal launch; --toggle passes through unchanged.
   exec claude-desktop --toggle
 }
 

@@ -39,10 +39,21 @@ rm -rf "$DIR/usr/share/lintian"   # Debian packaging-lint metadata, meaningless 
 # tree cannot provide, so default to --no-sandbox (same trade-off every portable
 # Electron app makes). Users who want the namespace sandbox can chown root +
 # chmod 4755 usr/lib/claude-desktop/chrome-sandbox and drop the flag.
+#
+# Also honors opt-in env vars for the Electron/Ozone/Wayland GPU-process crash
+# workaround (issue #66): CLAUDE_GPU_BACKEND=angle-gl, CLAUDE_USE_XWAYLAND=1,
+# CLAUDE_DISABLE_GPU=full. See packaging/launcher/claude-desktop-launcher for
+# the equivalent used by rpm/deb/Arch.
 cat > "$DIR/claude-desktop" <<'EOF'
 #!/bin/sh
 HERE="$(dirname "$(readlink -f "$0")")"
-exec "$HERE/usr/lib/claude-desktop/claude-desktop" --no-sandbox "$@"
+FLAGS="--no-sandbox"
+case "${CLAUDE_GPU_BACKEND:-}" in
+  angle-gl) FLAGS="$FLAGS --use-gl=angle --use-angle=gl" ;;
+esac
+[ "${CLAUDE_USE_XWAYLAND:-}" = "1" ] && FLAGS="$FLAGS --ozone-platform=x11"
+[ "${CLAUDE_DISABLE_GPU:-}" = "full" ] && FLAGS="$FLAGS --disable-gpu"
+exec "$HERE/usr/lib/claude-desktop/claude-desktop" $FLAGS "$@"
 EOF
 chmod +x "$DIR/claude-desktop"
 
