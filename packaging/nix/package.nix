@@ -107,10 +107,23 @@ stdenv.mkDerivation (finalAttrs: {
 
     # The bundled Electron binary auto-loads resources/app.asar. Store binaries
     # can't be setuid, so run Chromium's sandbox off (like the AppImage/tarball).
+    #
+    # --run also honors opt-in env vars for the Electron/Ozone/Wayland
+    # GPU-process crash workaround (issue #66): CLAUDE_GPU_BACKEND=angle-gl,
+    # CLAUDE_USE_XWAYLAND=1, CLAUDE_DISABLE_GPU=full. See
+    # packaging/launcher/claude-desktop-launcher for the equivalent used by
+    # rpm/deb/Arch.
     makeWrapper $out/lib/claude-desktop/claude-desktop $out/bin/claude-desktop \
       "''${gappsWrapperArgs[@]}" \
       --add-flags "--no-sandbox" \
       --set ELECTRON_OZONE_PLATFORM_HINT auto \
+      --run '
+        case "''${CLAUDE_GPU_BACKEND:-}" in
+          angle-gl) set -- --use-gl=angle --use-angle=gl "$@" ;;
+        esac
+        [ "''${CLAUDE_USE_XWAYLAND:-}" = "1" ] && set -- --ozone-platform=x11 "$@"
+        [ "''${CLAUDE_DISABLE_GPU:-}" = "full" ] && set -- --disable-gpu "$@"
+      ' \
       --prefix PATH : ${lib.makeBinPath (lib.optional (socat != null) socat
         ++ lib.optional (qemu != null) qemu)}
 

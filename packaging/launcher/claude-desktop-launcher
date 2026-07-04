@@ -1,0 +1,27 @@
+#!/bin/sh
+# Installed as the system /usr/bin/claude-desktop, replacing the upstream
+# package's bare symlink to the same target. Used by the rpm, deb, and Arch
+# builds (all three keep the real setuid chrome-sandbox, since the package is
+# installed system-wide as root) - the tarball, AppImage, and Nix builds ship
+# their own separate wrapper because they force --no-sandbox instead (they
+# cannot rely on a root-owned setuid binary).
+#
+# Honors opt-in env vars that add Chromium/Ozone flags to work around the
+# Electron/Ozone/Wayland GPU-process crash seen on some GPU+kernel-driver
+# combos (see https://github.com/boommasterxd/claude-desktop-repack/issues/66).
+# With none of these set, this is a byte-identical exec of the real binary, so
+# unaffected setups see no behavior change.
+#
+#   CLAUDE_GPU_BACKEND=angle-gl   -> --use-gl=angle --use-angle=gl
+#                                    (keeps GPU acceleration via ANGLE's GL
+#                                    backend instead of the native Wayland/GBM
+#                                    path; try this first)
+#   CLAUDE_USE_XWAYLAND=1         -> --ozone-platform=x11 (run under XWayland)
+#   CLAUDE_DISABLE_GPU=full       -> --disable-gpu (software rendering, last resort)
+FLAGS=""
+case "${CLAUDE_GPU_BACKEND:-}" in
+  angle-gl) FLAGS="$FLAGS --use-gl=angle --use-angle=gl" ;;
+esac
+[ "${CLAUDE_USE_XWAYLAND:-}" = "1" ] && FLAGS="$FLAGS --ozone-platform=x11"
+[ "${CLAUDE_DISABLE_GPU:-}" = "full" ] && FLAGS="$FLAGS --disable-gpu"
+exec /usr/lib/claude-desktop/claude-desktop $FLAGS "$@"

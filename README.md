@@ -157,6 +157,34 @@ Package name: `claude-desktop-repack` (so `dnf`/`apt`/`pacman` show it as ours);
 app identity (binary, `.desktop`, icon, WM_CLASS, `claude://` handler) stays
 `claude-desktop`, indistinguishable from the official build.
 
+## GPU / Wayland launcher workaround
+
+On some GPU + kernel-driver + compositor combinations (see
+[#66](https://github.com/boommasterxd/claude-desktop-repack/issues/66) - Intel
+`xe` on GNOME Wayland), Electron's Ozone/Wayland GPU-process init fails
+repeatedly and Chromium self-aborts (`GPU process isn't usable. Goodbye.`,
+exit `SIGTRAP`). That's an upstream Electron/Chromium/Mesa interaction, not
+something a repack can fix outright - but every packaged format execs the real
+Electron binary through a launcher (`packaging/launcher/claude-desktop-launcher`
+for rpm/deb/Arch; the tarball/AppImage/Nix builds' own wrappers) that reads
+three opt-in env vars, so you do not have to invoke `claude-desktop` with raw
+flags by hand:
+
+| env var | effect | when to use it |
+|---|---|---|
+| `CLAUDE_GPU_BACKEND=angle-gl` | `--use-gl=angle --use-angle=gl` | try first: usually clears the GPU-process crash while keeping GPU acceleration |
+| `CLAUDE_USE_XWAYLAND=1` | `--ozone-platform=x11` | if that isn't enough: run under XWayland instead of native Wayland |
+| `CLAUDE_DISABLE_GPU=full` | `--disable-gpu` | last resort: software rendering, guaranteed not to crash |
+
+```bash
+CLAUDE_GPU_BACKEND=angle-gl claude-desktop
+```
+
+None are set by default, so unaffected setups see no change. To apply one
+whenever you launch from the app grid, edit the `Exec=` line of
+`/usr/share/applications/claude-desktop.desktop`, e.g.
+`Exec=env CLAUDE_GPU_BACKEND=angle-gl claude-desktop %U`.
+
 ## Patches
 
 The only changes to the app are a few small patches applied to `app.asar` at build
@@ -180,9 +208,8 @@ apps on `xdg-desktop-portal` 1.20+ (see
 [electron/electron#51875](https://github.com/electron/electron/issues/51875)).
 
 This patch exposes the app's own Quick Entry toggle over a Unix socket. The
-packages ship a small `claude-desktop-hotkey` command next to the (untouched)
-upstream launcher; it pokes that socket to open/close Quick Entry in ~5-25 ms.
-Bind it to a native GNOME shortcut:
+packages ship a small `claude-desktop-hotkey` command; it pokes that socket to
+open/close Quick Entry in ~5-25 ms. Bind it to a native GNOME shortcut:
 
 ```bash
 claude-desktop-hotkey --install       # binds Ctrl+Alt+Space

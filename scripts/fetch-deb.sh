@@ -52,9 +52,19 @@ node "$HERE/check-native-paths.mjs" "$OUT/payload" "$VERSION"
 # if a pattern no longer matches, so CI can open a per-version issue.
 node "$HERE/patch-payload.mjs" "$OUT/payload" "$VERSION"
 
-# Add the hotkey helper next to the upstream launcher (which stays a plain
-# symlink, untouched): a bug here can never block the app from starting.
+# Add the hotkey helper alongside the main launcher: a bug here can never
+# block the app from starting, since it never touches usr/bin/claude-desktop.
 install -Dm755 "$HERE/../packaging/launcher/claude-desktop-hotkey" \
   "$OUT/payload/usr/bin/claude-desktop-hotkey"
+
+# Replace the upstream bare symlink at usr/bin/claude-desktop with a launcher
+# that adds opt-in env-var-gated Ozone/GPU workaround flags (issue #66), while
+# leaving the real setuid chrome-sandbox enabled - this payload ends up
+# installed system-wide as root (rpm, deb, and Arch, which packages this
+# payload's usr/ tree verbatim), unlike the tarball/AppImage/Nix builds which
+# ship their own separate --no-sandbox wrapper.
+rm -f "$OUT/payload/usr/bin/claude-desktop"
+install -Dm755 "$HERE/../packaging/launcher/claude-desktop-launcher" \
+  "$OUT/payload/usr/bin/claude-desktop"
 
 echo "fetch-deb: payload ready in $OUT/payload (version $VERSION, patched)"
