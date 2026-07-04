@@ -27,8 +27,9 @@ toggle() {
 s=socket.socket(socket.AF_UNIX); s.settimeout(0.5); s.connect(sys.argv[1]); s.close()' "$SOCK" >/dev/null 2>&1 && exit 0
     fi
   fi
-  # Not running (or no socat/python): let the app handle --toggle in argv via its
-  # cold-start / second-instance check. Uses the untouched upstream launcher.
+  # Not running (or no socat/python): let the app handle --toggle in argv via
+  # its cold-start / second-instance check. Goes through claude-desktop-
+  # launcher like any normal launch; --toggle passes through unchanged.
   exec claude-desktop --toggle
 }
 

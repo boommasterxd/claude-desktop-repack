@@ -1,10 +1,17 @@
 #!/bin/sh
-# Installed as the system /usr/bin/claude-desktop, replacing the upstream
-# package's bare symlink to the same target. Used by the rpm, deb, and Arch
-# builds (all three keep the real setuid chrome-sandbox, since the package is
-# installed system-wide as root) - the tarball, AppImage, and Nix builds ship
-# their own separate wrapper because they force --no-sandbox instead (they
-# cannot rely on a root-owned setuid binary).
+# Installed as /usr/bin/claude-desktop, replacing the upstream package's bare
+# symlink to the same target (a *relative* symlink: ../lib/claude-desktop/
+# claude-desktop). Used by the rpm, deb, and Arch builds (all three keep the
+# real setuid chrome-sandbox, since the package is installed system-wide as
+# root) - the tarball, AppImage, and Nix builds ship their own separate
+# wrapper because they force --no-sandbox instead (they cannot rely on a
+# root-owned setuid binary).
+#
+# This same payload's usr/ tree is also copied verbatim into the tarball and
+# AppImage builds, so path resolution below stays relative to this script's
+# own location (like the symlink it replaces), instead of hardcoding /usr: a
+# relocated tarball extraction must still resolve to the bundled binary next
+# to it, not to a possibly-absent (or different) system-wide install.
 #
 # Honors opt-in env vars that add Chromium/Ozone flags to work around the
 # Electron/Ozone/Wayland GPU-process crash seen on some GPU+kernel-driver
@@ -18,10 +25,11 @@
 #                                    path; try this first)
 #   CLAUDE_USE_XWAYLAND=1         -> --ozone-platform=x11 (run under XWayland)
 #   CLAUDE_DISABLE_GPU=full       -> --disable-gpu (software rendering, last resort)
+HERE="$(dirname "$(readlink -f "$0")")"
 FLAGS=""
 case "${CLAUDE_GPU_BACKEND:-}" in
   angle-gl) FLAGS="$FLAGS --use-gl=angle --use-angle=gl" ;;
 esac
 [ "${CLAUDE_USE_XWAYLAND:-}" = "1" ] && FLAGS="$FLAGS --ozone-platform=x11"
 [ "${CLAUDE_DISABLE_GPU:-}" = "full" ] && FLAGS="$FLAGS --disable-gpu"
-exec /usr/lib/claude-desktop/claude-desktop $FLAGS "$@"
+exec "$HERE/../lib/claude-desktop/claude-desktop" $FLAGS "$@"
