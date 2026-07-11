@@ -20,13 +20,21 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { extractFile } from "@electron/asar";
+import { extractFile, listPackage } from "@electron/asar";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const BASELINE = join(HERE, "../baseline/system-paths.json");
 
 // Bundles inside app.asar that carry system-integration code.
-const BUNDLES = [".vite/build/index.js", ".vite/build/index.pre.js", ".vite/build/mainView.js"];
+// `.vite/build/index.js` used to be the whole Electron main-process bundle; as
+// of Claude Desktop 1.19367.0 it is a tiny bootstrap requiring a separately
+// content-hashed `index.chunk-<hash>.js`, which itself transitively requires a
+// whole graph of further `index.chunk-*.js` files (including platform-specific
+// ones, e.g. macOS-only probes). So rather than following one "main" require
+// (fragile - the graph shape can change release to release), just scan every
+// `index.chunk-*.js` file alongside the entry and the other known bundles.
+const STATIC_BUNDLES = [".vite/build/index.js", ".vite/build/index.pre.js", ".vite/build/mainView.js"];
+const CHUNK_RE = /^\/\.vite\/build\/index\.chunk-[\w-]+\.js$/;
 
 // Absolute system paths under these roots are where distro layout diverges.
 const PATH_RE = /["'`](\/(?:usr|etc|var|run|opt|lib|lib64|bin|sbin)\/[A-Za-z0-9._/*+-]+)/g;
@@ -34,7 +42,13 @@ const PATH_RE = /["'`](\/(?:usr|etc|var|run|opt|lib|lib64|bin|sbin)\/[A-Za-z0-9.
 function extractPaths(payloadDir) {
   const asar = join(payloadDir, "usr/lib/claude-desktop/resources/app.asar");
   const found = new Set();
-  for (const rel of BUNDLES) {
+
+  const chunks = listPackage(asar)
+    .filter((f) => CHUNK_RE.test(f))
+    .map((f) => f.slice(1)); // strip the leading "/" listPackage adds
+  const bundles = new Set([...STATIC_BUNDLES, ...chunks]);
+
+  for (const rel of bundles) {
     let buf;
     try {
       buf = extractFile(asar, rel);

@@ -41,6 +41,24 @@ test -u "$OUT/payload/usr/lib/claude-desktop/chrome-sandbox" \
 
 printf '%s\n' "$VERSION" > "$OUT/version"
 
+# Upstream's desktop-entry filename is not stable across releases (e.g.
+# 1.19367.0 renamed it from claude-desktop.desktop to com.anthropic.Claude.desktop,
+# matching the app's own new package.json `desktopName`/WM_CLASS). Canonicalize
+# it to claude-desktop.desktop here, once, so every downstream builder
+# (rpm/deb/tarball/AppImage/Arch/Nix) keeps a stable install path instead of
+# each rediscovering upstream's current name. Content is left untouched, so
+# StartupWMClass etc. still faithfully reflects upstream's real app id.
+APPS_DIR="$OUT/payload/usr/share/applications"
+if [ ! -e "$APPS_DIR/claude-desktop.desktop" ]; then
+  mapfile -t desktop_files < <(find "$APPS_DIR" -maxdepth 1 -name '*.desktop')
+  if [ "${#desktop_files[@]}" -ne 1 ]; then
+    echo "fetch-deb: expected exactly 1 .desktop file in $APPS_DIR, found ${#desktop_files[@]}: ${desktop_files[*]}" >&2
+    exit 1
+  fi
+  mv "${desktop_files[0]}" "$APPS_DIR/claude-desktop.desktop"
+  echo "fetch-deb: canonicalized $(basename "${desktop_files[0]}") -> claude-desktop.desktop"
+fi
+
 # Guard: fail the build if upstream introduced new, unreviewed absolute system
 # paths that might be Debian-specific and break non-Debian distros (like the OVMF
 # firmware paths cowork-firmware-paths fixes). Runs on the pristine asar and

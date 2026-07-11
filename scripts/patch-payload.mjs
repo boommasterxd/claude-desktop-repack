@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Apply the minimal GNOME-Wayland patches to an extracted Claude Desktop payload,
-// in place. Extract app.asar, patch .vite/build/index.js, validate, repack
+// in place. Extract app.asar, patch the main bundle (`.vite/build/index.js`, or
+// whatever chunk it requires - see lib/resolve-main-bundle.mjs), validate, repack
 // (keeping native .node modules unpacked), then swap the /usr/bin launcher.
 //
 // Usage: node scripts/patch-payload.mjs <payloadDir> [version]
@@ -16,6 +17,7 @@ import { execFileSync } from "node:child_process";
 import { extractAll, createPackageWithOptions, getRawHeader } from "@electron/asar";
 
 import { patches as PATCHES } from "../patches/index.mjs";
+import { resolveMainBundleRelPath } from "./lib/resolve-main-bundle.mjs";
 
 const payloadDir = process.argv[2];
 const version = process.argv[3] || "unknown";
@@ -39,8 +41,13 @@ const work = mkdtempSync(join(tmpdir(), "cdr-patch-"));
 try {
   extractAll(asarPath, work);
 
-  const idxPath = join(work, ".vite/build/index.js");
-  let code = readFileSync(idxPath, "utf8");
+  // The entry file may itself be the bundle, or (since 1.19367.0) a tiny
+  // bootstrap that requires a separately hashed chunk holding the real code.
+  const entryRelPath = ".vite/build/index.js";
+  const entryCode = readFileSync(join(work, entryRelPath), "utf8");
+  const bundleRelPath = resolveMainBundleRelPath(entryRelPath, entryCode);
+  const bundlePath = join(work, bundleRelPath);
+  let code = readFileSync(bundlePath, "utf8");
 
   // Apply every patch, collecting which ones fail (report them all at once).
   const failed = [];
@@ -55,14 +62,16 @@ try {
   }
   if (failed.length) fail(failed.join(","));
 
-  writeFileSync(idxPath, code);
+  writeFileSync(bundlePath, code);
 
   // Syntax-validate the patched main bundle.
   try {
-    execFileSync(process.execPath, ["--check", idxPath], { stdio: "pipe" });
-    console.log("  [OK] node --check index.js");
+    execFileSync(process.execPath, ["--check", bundlePath], { stdio: "pipe" });
+    console.log(`  [OK] node --check ${bundleRelPath}`);
   } catch (e) {
-    console.error(`  [FAIL] patched index.js has a syntax error:\n${(e.stderr || e.stdout || e.message).toString()}`);
+    console.error(
+      `  [FAIL] patched ${bundleRelPath} has a syntax error:\n${(e.stderr || e.stdout || e.message).toString()}`,
+    );
     fail("syntax-check");
   }
 

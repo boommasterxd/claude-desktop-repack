@@ -11,6 +11,7 @@
   "/etc/os-release",
   "/etc/profiles/per-user/",
   "/etc/ssl/certs",
+  "/lib/modules",
   "/opt/cowork/cli-wrapper",
   "/opt/homebrew/",
   "/opt/homebrew/Caskroom/miniforge/base/envs/py*/bin",
