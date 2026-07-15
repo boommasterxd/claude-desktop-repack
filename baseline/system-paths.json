@@ -2,6 +2,7 @@
   "/bin/bash",
   "/bin/false",
   "/bin/generate_temp_api_key.sh",
+  "/bin/ps",
   "/bin/sh",
   "/bin/zsh",
   "/etc/claude-code",
