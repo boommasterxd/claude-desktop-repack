@@ -11,7 +11,6 @@
   "/etc/claude/vertex-sa.json",
   "/etc/os-release",
   "/etc/profiles/per-user/",
-  "/etc/ssl/certs",
   "/lib/modules",
   "/opt/cowork/cli-wrapper",
   "/opt/homebrew/",
@@ -29,6 +28,7 @@
   "/usr/bin/osascript",
   "/usr/bin/pgrep",
   "/usr/bin/plutil",
+  "/usr/bin/sandbox-exec",
   "/usr/bin/sqlite3",
   "/usr/bin/ssh",
   "/usr/bin/sw_vers",
@@ -50,5 +50,6 @@
   "/usr/sbin/sysctl",
   "/usr/share/AAVMF/AAVMF_CODE.fd",
   "/usr/share/OVMF/OVMF_CODE.fd",
-  "/usr/share/OVMF/OVMF_CODE_4M.fd"
+  "/usr/share/OVMF/OVMF_CODE_4M.fd",
+  "/var/db/xcode_select_link"
 ]
