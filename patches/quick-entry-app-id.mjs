@@ -32,15 +32,20 @@ export function apply(code) {
   //    Anchor: `W||(W=new E.BrowserWindow({titleBarStyle:"hidden` where the
   //    short-circuit target and the assignment LHS are the same var (== the
   //    upstream `Po||(Po=new ...)` guard, unique to the Quick Entry window).
-  const preRe = /([\w$]+)\|\|\(([\w$]+)=new ([\w$]+)\.BrowserWindow\(\{titleBarStyle:"hidden/g;
+  //    Quote-agnostic on "hidden" since upstream has shipped both `"hidden`
+  //    and `` `hidden` `` (backtick) string literals across releases.
+  const preRe = /([\w$]+)\|\|\(([\w$]+)=new ([\w$]+)\.BrowserWindow\(\{titleBarStyle:(["'`])hidden/g;
   let preCount = 0;
-  code = code.replace(preRe, (m, w1, w2, ev) => {
+  code = code.replace(preRe, (m, w1, w2, ev, quote) => {
     if (w1 !== w2) return m; // not the QE constructor, leave untouched
     preCount++;
     return (
       `${w1}||(process.env.CHROME_DESKTOP="${QE_APP_ID}.desktop",` +
       `(typeof ${ev}.app.setDesktopName==="function"&&${ev}.app.setDesktopName("${QE_APP_ID}.desktop")),` +
-      `${w2}=new ${ev}.BrowserWindow({titleBarStyle:"hidden`
+      // Replay the matched tail with the SAME quote character upstream used -
+      // the closing quote after "hidden" is untouched original text, so ours
+      // must match it or the literal is left unbalanced.
+      `${w2}=new ${ev}.BrowserWindow({titleBarStyle:${quote}hidden`
     );
   });
   if (preCount !== 1) {
@@ -53,7 +58,12 @@ export function apply(code) {
   //    name is read from the app's own package.json (falling back to the last
   //    known-good literal if that ever fails) rather than hardcoded - see the
   //    module comment above.
-  const loadRe = /([\w$]+)\.loadFile\(([\w$]+)\.join\(([\w$]+)\.app\.getAppPath\(\),"\.vite\/renderer\/quick_window\/quick-window\.html"\)\)/g;
+  // `joinVar` allows an optional one-level `.default` since upstream's `path`
+  // import is sometimes accessed through its ESM-interop default export
+  // (`p.default.join(...)`) rather than directly (`p.join(...)`). The path
+  // string itself is matched quote-agnostically (", ' or `).
+  const loadRe =
+    /([\w$]+)\.loadFile\(((?:[\w$]+\.)?[\w$]+)\.join\(([\w$]+)\.app\.getAppPath\(\),["'`]\.vite\/renderer\/quick_window\/quick-window\.html["'`]\)\)/g;
   let postCount = 0;
   code = code.replace(loadRe, (m, winVar, joinVar, ev) => {
     postCount++;
