@@ -42,26 +42,40 @@ const EXTRA_VIRTIOFSD = [
 // aarch64 needs no additions: the Debian path the app already checks,
 // /usr/share/AAVMF/AAVMF_CODE.fd, is also canonical on Fedora/RHEL and Arch.
 
-function countOccurrences(haystack, needle) {
-  let n = 0;
-  for (let i = haystack.indexOf(needle); i !== -1; i = haystack.indexOf(needle, i + needle.length)) n++;
-  return n;
+function escapeRe(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-// Splice `extra` string literals in right after the quoted `lastPath` literal.
-// Idempotent via `marker` (a distro path the patch introduces, absent upstream).
-function injectAfter(code, lastPath, extra, marker, label) {
-  if (code.includes(`"${marker}"`)) return code; // already patched (end-state present)
+// Matches `lastPath` wrapped in whichever of "/'/` the minifier used for that
+// literal, requiring the same quote character on both ends.
+function quotedRe(literal, flags) {
+  return new RegExp(`(["'\`])${escapeRe(literal)}\\1`, flags);
+}
 
-  const anchor = `"${lastPath}"`;
-  const count = countOccurrences(code, anchor);
-  if (count !== 1) {
+// True if `literal` appears quoted in `code` with any of the three JS quote
+// styles - used for both the idempotency short-circuit and end-state asserts,
+// since the quote character we inject with depends on what upstream used.
+function hasQuotedLiteral(code, literal) {
+  return quotedRe(literal).test(code);
+}
+
+// Splice `extra` string literals in right after the quoted `lastPath` literal,
+// reusing whichever quote character (", ' or `) wraps `lastPath` in this
+// release - the minified bundle is not guaranteed to keep using the same one
+// release to release. Idempotent via `marker` (a distro path the patch
+// introduces, absent upstream).
+function injectAfter(code, lastPath, extra, marker, label) {
+  if (hasQuotedLiteral(code, marker)) return code; // already patched (end-state present)
+
+  const matches = [...code.matchAll(quotedRe(lastPath, "g"))];
+  if (matches.length !== 1) {
     throw new Error(
-      `${name}: ${label} anchor ${anchor} found ${count} time(s) (expected 1) - upstream shape changed, re-anchor`,
+      `${name}: ${label} anchor "${lastPath}" found ${matches.length} time(s) (expected 1) - upstream shape changed, re-anchor`,
     );
   }
-  const injection = extra.map((p) => `,"${p}"`).join("");
-  const at = code.indexOf(anchor) + anchor.length; // just past the closing quote
+  const [full, quote] = matches[0];
+  const injection = extra.map((p) => `,${quote}${p}${quote}`).join("");
+  const at = matches[0].index + full.length; // just past the closing quote
   return code.slice(0, at) + injection + code.slice(at);
 }
 
@@ -71,10 +85,10 @@ export function apply(code) {
   out = injectAfter(out, "/usr/bin/virtiofsd", EXTRA_VIRTIOFSD, "/usr/lib/virtiofsd", "virtiofsd");
 
   // Positive end-state assertions (never report success on a false premise).
-  if (!out.includes(`"/usr/share/edk2/x64/OVMF_CODE.4m.fd"`)) {
+  if (!hasQuotedLiteral(out, "/usr/share/edk2/x64/OVMF_CODE.4m.fd")) {
     throw new Error(`${name}: firmware end-state missing after patch`);
   }
-  if (!out.includes(`"/usr/lib/virtiofsd"`)) {
+  if (!hasQuotedLiteral(out, "/usr/lib/virtiofsd")) {
     throw new Error(`${name}: virtiofsd end-state missing after patch`);
   }
   return out;

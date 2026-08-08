@@ -30,11 +30,14 @@ const BASELINE = join(HERE, "../baseline/system-paths.json");
 // of Claude Desktop 1.19367.0 it is a tiny bootstrap requiring a separately
 // content-hashed `index.chunk-<hash>.js`, which itself transitively requires a
 // whole graph of further `index.chunk-*.js` files (including platform-specific
-// ones, e.g. macOS-only probes). So rather than following one "main" require
-// (fragile - the graph shape can change release to release), just scan every
-// `index.chunk-*.js` file alongside the entry and the other known bundles.
+// ones, e.g. macOS-only probes). As of 1.25927.0 Vite also emits a second,
+// sibling chunk group `index2.chunk-<hash>.js` (same idea, separate manualChunks
+// bucket) carrying its own share of platform-specific paths. So rather than
+// following one "main" require (fragile - the graph shape can change release to
+// release), just scan every `index<N>.chunk-*.js` file alongside the entry and
+// the other known bundles - `\d*` also covers any future `index3`, etc. groups.
 const STATIC_BUNDLES = [".vite/build/index.js", ".vite/build/index.pre.js", ".vite/build/mainView.js"];
-const CHUNK_RE = /^\/\.vite\/build\/index\.chunk-[\w-]+\.js$/;
+const CHUNK_RE = /^\/\.vite\/build\/index\d*\.chunk-[\w-]+\.js$/;
 
 // Absolute system paths under these roots are where distro layout diverges.
 const PATH_RE = /["'`](\/(?:usr|etc|var|run|opt|lib|lib64|bin|sbin)\/[A-Za-z0-9._/*+-]+)/g;

@@ -33,16 +33,20 @@ const WRAP =
   'return _pre+" "+s.split(" ").slice(3).map(p=>_map[p]||p).join(" ")' +
   '}catch(_){return s}})';
 
+// The minified bundle's string-literal quote style (", ' or `) is not stable
+// release to release, so match whichever one wraps these literals here rather
+// than hardcoding "; \2/\3 backreferences require the closing quote to match
+// the opening one.
 export function apply(code) {
   if (code.includes("sudo dnf install")) return code; // already patched (end-state present)
 
-  const opens = (code.match(/\["sudo apt install",/g) || []).length;
+  const opens = (code.match(/\[(["'`])sudo apt install\1,/g) || []).length;
   if (opens !== 1) {
     throw new Error(`${name}: expected exactly 1 "sudo apt install" hint, found ${opens}`);
   }
 
   let done = 0;
-  const out = code.replace(/(\["sudo apt install",[\s\S]*?\]\.join\(" "\))/, (m) => {
+  const out = code.replace(/(\[(["'`])sudo apt install\2,[\s\S]*?\]\.join\((["'`]) \3\))/, (m) => {
     done++;
     return `${WRAP}(${m})`;
   });

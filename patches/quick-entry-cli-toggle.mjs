@@ -23,10 +23,13 @@ export function apply(code) {
   // Anchor on the registration call `fn(<enum>.QUICK_ENTRY, ()=>{ ... })` and
   // capture the arrow with a generic brace-free body (`[^{}]*`) rather than the
   // exact ternary. We only wrap the body, so its internal logic can change
-  // (a handler-logic refactor) without breaking the patch. Verified to still
-  // match exactly once. If a future body gains nested braces or extra args the
-  // count check fails loud and files an issue, rather than mis-patching.
-  const qeRe = /([\w$]+)\(([\w$]+)\.QUICK_ENTRY,(\(\)=>\{[^{}]*\})\)/g;
+  // (a handler-logic refactor) without breaking the patch. `fn`/`<enum>` allow an
+  // optional one-level `ns.` prefix since upstream sometimes accesses them as a
+  // shared namespace property (`h.p(h.l.QUICK_ENTRY, ...)`) instead of a bare
+  // destructured binding. Verified to still match exactly once. If a future body
+  // gains nested braces or extra args the count check fails loud and files an
+  // issue, rather than mis-patching.
+  const qeRe = /((?:[\w$]+\.)?[\w$]+)\(((?:[\w$]+\.)?[\w$]+)\.QUICK_ENTRY,(\(\)=>\{[^{}]*\})\)/g;
   let countA = 0;
   code = code.replace(qeRe, (m, regFn, enumVar, arrow) => {
     countA++;
@@ -64,9 +67,12 @@ export function apply(code) {
   }
 
   // B: prepend an argv check to the second-instance handler (warm-start path).
-  const siRe = /(\.on\("second-instance",\()([\w$]+),([\w$]+),([\w$]+)(\)=>\{)/g;
+  // Quote-agnostic on the event-name literal (upstream has shipped it as both
+  // "second-instance" and `second-instance`; \2 requires the closing quote to
+  // match whichever the opening one was).
+  const siRe = /(\.on\((["'`])second-instance\2,\()([\w$]+),([\w$]+),([\w$]+)(\)=>\{)/g;
   let countB = 0;
-  code = code.replace(siRe, (m, head, evt, argv, cwd, tail) => {
+  code = code.replace(siRe, (m, head, quote, evt, argv, cwd, tail) => {
     countB++;
     const check =
       `if(Array.isArray(${argv})&&(${argv}.includes("${FLAG}")||${argv}.includes("${FLAG_SHORT}")))` +
