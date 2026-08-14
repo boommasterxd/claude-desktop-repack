@@ -41,6 +41,7 @@
   "/usr/local/bin/ccd",
   "/usr/local/bin/claude",
   "/usr/local/bin/corp-cred-helper",
+  "/usr/local/bin/otel-headers-helper",
   "/usr/local/bin/uvx",
   "/usr/local/go/bin",
   "/usr/sbin/kextstat",
