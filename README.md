@@ -1,3 +1,6 @@
+# Attention
+This repo will be archived and will not been maintained anymore, because I will switch to Codex. If you want too keep using Claude Desktop on your Linux Distributions checkout [**patrickjaja/claude-desktop-extra**](https://github.com/patrickjaja/claude-desktop-extra.
+
 <div align="center">
 
 # Claude Desktop for Linux <sub>(repack)</sub>
@@ -53,7 +56,7 @@ See [Patches](#patches) for the details on all four.
 > gates off on Linux.
 >
 > If you want the **full experience**, definitely check out
-> [**patrickjaja/claude-desktop-bin**](https://github.com/patrickjaja/claude-desktop-bin):
+> [**patrickjaja/claude-desktop-extra**](https://github.com/patrickjaja/claude-desktop-extra):
 > it patches a whole set of Linux-only extras to life, including **Computer Use**,
 > **custom themes**, **multiple side-by-side profiles**, **Recent Projects**,
 > **Open in VS Code / Cursor / Zed**, Hardware Buddy and more.
