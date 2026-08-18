@@ -26,10 +26,14 @@ export function apply(code) {
   // (a handler-logic refactor) without breaking the patch. `fn`/`<enum>` allow an
   // optional one-level `ns.` prefix since upstream sometimes accesses them as a
   // shared namespace property (`h.p(h.l.QUICK_ENTRY, ...)`) instead of a bare
-  // destructured binding. Verified to still match exactly once. If a future body
-  // gains nested braces or extra args the count check fails loud and files an
-  // issue, rather than mis-patching.
-  const qeRe = /((?:[\w$]+\.)?[\w$]+)\(((?:[\w$]+\.)?[\w$]+)\.QUICK_ENTRY,(\(\)=>\{[^{}]*\})\)/g;
+  // destructured binding. The arrow itself may be wrapped in an extra pair of
+  // parens (`fn(<enum>.QUICK_ENTRY, (()=>{ ... }))`, seen from 1.32352.0) - the
+  // optional `\(?`/`\)?` around it absorb that wrap; since the whole call is
+  // regenerated on replace, the wrap is simply dropped rather than needing to be
+  // preserved. Verified to still match exactly once. If a future body gains
+  // nested braces or extra args the count check fails loud and files an issue,
+  // rather than mis-patching.
+  const qeRe = /((?:[\w$]+\.)?[\w$]+)\(((?:[\w$]+\.)?[\w$]+)\.QUICK_ENTRY,\(?(\(\)=>\{[^{}]*\})\)?\)/g;
   let countA = 0;
   code = code.replace(qeRe, (m, regFn, enumVar, arrow) => {
     countA++;
@@ -69,8 +73,14 @@ export function apply(code) {
   // B: prepend an argv check to the second-instance handler (warm-start path).
   // Quote-agnostic on the event-name literal (upstream has shipped it as both
   // "second-instance" and `second-instance`; \2 requires the closing quote to
-  // match whichever the opening one was).
-  const siRe = /(\.on\((["'`])second-instance\2,\()([\w$]+),([\w$]+),([\w$]+)(\)=>\{)/g;
+  // match whichever the opening one was). The arrow's param list may itself be
+  // wrapped in an extra pair of parens (`.on(..., ((t,n,r)=>{ ... }))`, seen
+  // from 1.32352.0) - `\(?` optionally absorbs that wrap. Unlike the QUICK_ENTRY
+  // arrow above, the body here isn't brace-free, so the match only extends to
+  // the opening `{`; the captured `head` keeps whatever wrap was present
+  // verbatim and is replayed as-is, so no matching close paren needs to be
+  // located or dropped.
+  const siRe = /(\.on\((["'`])second-instance\2,\(?\()([\w$]+),([\w$]+),([\w$]+)(\)=>\{)/g;
   let countB = 0;
   code = code.replace(siRe, (m, head, quote, evt, argv, cwd, tail) => {
     countB++;
