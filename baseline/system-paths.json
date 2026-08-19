@@ -37,6 +37,7 @@
   "/usr/local/Cellar/",
   "/usr/local/bin",
   "/usr/local/bin/aws",
+  "/usr/local/bin/bootstrap-headers-helper",
   "/usr/local/bin/brew",
   "/usr/local/bin/ccd",
   "/usr/local/bin/claude",
