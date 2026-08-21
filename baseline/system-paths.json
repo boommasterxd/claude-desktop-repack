@@ -9,6 +9,7 @@
   "/etc/claude-desktop",
   "/etc/claude-desktop/managed-settings.json",
   "/etc/claude/vertex-sa.json",
+  "/etc/machine-info",
   "/etc/os-release",
   "/etc/profiles/per-user/",
   "/lib/modules",
