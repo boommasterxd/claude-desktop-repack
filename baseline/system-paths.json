@@ -1,6 +1,5 @@
 [
   "/bin/bash",
-  "/bin/false",
   "/bin/generate_temp_api_key.sh",
   "/bin/ps",
   "/bin/sh",
@@ -52,5 +51,6 @@
   "/usr/share/AAVMF/AAVMF_CODE.fd",
   "/usr/share/OVMF/OVMF_CODE.fd",
   "/usr/share/OVMF/OVMF_CODE_4M.fd",
+  "/usr/share/applications/",
   "/var/db/xcode_select_link"
 ]

@@ -199,9 +199,11 @@ patch, so a broken patch is never shipped silently.
 Two of them (`quick-entry-cli-toggle`, `quick-entry-app-id`) address gaps specific
 to **GNOME on Wayland**; on X11 and other compositors the official build already
 behaves correctly. Two more (`cowork-firmware-paths`, `cowork-install-hint`) make
-Cowork work and its dependency hint correct on non-Debian distros. The app itself
-runs unmodified everywhere; these only fill in the Linux/distro gaps the official
-Debian build leaves.
+Cowork work and its dependency hint correct on non-Debian distros. One more
+(`os-entry-points-desktop-id`) keeps the launcher jump-list actions working under
+this repack's stable desktop-entry filename. The app itself runs unmodified
+everywhere; these only fill in the Linux/distro gaps the official Debian build
+leaves.
 
 ### Quick Entry hotkey (`quick-entry-cli-toggle`)
 
@@ -282,6 +284,22 @@ package names), which is wrong on other distros. This patch wraps it in a tiny
 runtime translator: on Debian/Ubuntu it is returned unchanged, otherwise the first
 of `dnf`/`pacman`/`zypper` found rewrites the manager and package names for that
 distro. Cosmetic and fully guarded: any failure falls back to the original string.
+
+### OS entry points desktop id (`os-entry-points-desktop-id`)
+
+The app can augment its Linux launcher entry with extra Desktop Actions (New
+Chat, New Claude Code Session, Continue Last Session, Sessions Waiting for You),
+shown as a jump list by launchers/file managers that support XDG Desktop
+Actions. To do that it reads back its own installed `.desktop` file from
+`/usr/share/applications/`, hard-coding upstream's current filename
+(`com.anthropic.Claude.desktop`).
+
+This repack installs that file as `claude-desktop.desktop` instead, so its
+filename stays stable across upstream's own desktop-entry renames (as happened
+once already, at 1.19367.0). Without this patch the hard-coded read never
+matches what's actually installed, and the feature silently no-ops. This patch
+repoints it at `claude-desktop.desktop`, matching the file this repack actually
+installs.
 
 ## Contributing
 
